@@ -1,11 +1,6 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/master/examples
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
 
-defaults:
-  run:
-    shell: bash
-    working-directory: Package
-
 on:
   push:
     branches: [main, master]
@@ -48,5 +43,6 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v1
         with:
           extra-packages: rcmdcheck
+          working-directory: Package
 
       - uses: r-lib/actions/check-r-package@v1
