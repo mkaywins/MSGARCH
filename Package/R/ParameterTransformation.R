@@ -1,6 +1,7 @@
 ###################################### MAPPING Par ####
 
 f_mapPar <- function(vPw, spec, do.plm = FALSE) {
+  #print("Call: f_mapPar")
   if (isTRUE(do.plm)) {
     vLower = spec$lower
     vUpper = spec$upper
@@ -21,7 +22,11 @@ f_mapPar <- function(vPw, spec, do.plm = FALSE) {
       vPn <- f_mapSR(vPw, spec)
     }
   }
-
+  
+  # skips any kind of mapping for factors - no need to map factors
+  if(isTRUE(spec$is.tvp)){
+    vPn[spec$factornames] = vPw[spec$factornames] 
+  }
   return(vPn)
 }
 
@@ -45,13 +50,22 @@ f_mapJacob <- function(vPw, spec) {
 }
 
 f_unmapPar <- function(par, spec, do.plm = FALSE) {
-  if (isTRUE(do.plm)) {
+  
+  if (isTRUE(do.plm)) { # do.plm checks wheter stationarity conditions should be maintained during the optimisation
     vLower = spec$lower
     vUpper = spec$upper
 
     names(vLower) = names(spec$par0)
     names(vUpper) = names(spec$par0)
-
+    
+    #if(isTRUE(spec$is.tvp) && isTRUE('factornames' %in% names(spec))){
+    #  # exclude factors from unmapping 
+    #  vLower = vLower[!spec$factornames]
+    #  vUpper = vUpper[!spec$factornames]
+    #  par = par[!spec$factornames]
+    #}
+    
+    # names(par) = alpha0_1 alpha1_1   beta_1 alpha0_2 alpha1_2   beta_2    P_1_1    P_2_1
     vPw <- f_unmap(par, vLower[names(par)], vUpper[names(par)])[1, ]
 
     names(vPw) = names(par)
@@ -64,6 +78,10 @@ f_unmapPar <- function(par, spec, do.plm = FALSE) {
     } else {
       vPw <- f_unmapSR(par, spec)
     }
+  }
+  
+  if(isTRUE(spec$is.tvp) && isTRUE(spec$n.factors > 0)){
+    vPw[spec$factornames] = par[spec$factornames]
   }
 
   return(vPw)
@@ -81,8 +99,12 @@ f_pw2pn_SR <- function(vPw, k, sModel, skew = NA, shape = NA, sDist = NULL) {
     shape <- NULL
   }
 
-  vPn <- switch(sModel, sARCH = f_pw2pn_sARCH_SR(vPw, k), sGARCH = f_pw2pn_sGARCH_SR(vPw, k), eGARCH = f_pw2pn_eGARCH_SR(vPw, k), gjrGARCH = f_pw2pn_gjrGARCH_SR(vPw, k, skew, shape,
-                                                                                                                                                                 sDist), tGARCH = f_pw2pn_tGARCH_SR(vPw, k, skew, shape, sDist))
+  vPn <- switch(sModel, 
+                sARCH = f_pw2pn_sARCH_SR(vPw, k),
+                sGARCH = f_pw2pn_sGARCH_SR(vPw, k),
+                eGARCH = f_pw2pn_eGARCH_SR(vPw, k),
+                gjrGARCH = f_pw2pn_gjrGARCH_SR(vPw, k, skew, shape,sDist),
+                tGARCH = f_pw2pn_tGARCH_SR(vPw, k, skew, shape, sDist))
   return(vPn)
 
 }
@@ -142,24 +164,33 @@ f_unmapSR <- function(vPn, spec) {
 
 f_mapSR <- function(vPw, spec) {
 
+  # get the model
   sModel <- f_getModel(spec)
+  
+  # get the distribution
   sDist <- f_getDist(spec)
+  
+  # get vector of lower/upper bounds for parameters in the model
   lower <- spec$lower
   upper <- spec$upper
 
+  # assign names
   names(lower) <- names(vPw)
   names(upper) <- names(vPw)
 
   sSkew_tilde <- vPw[paste("xi_1")]  #nas for non skew cond dist
   sShape_tilde <- vPw[paste("nu_1")]  #nas for gauss cond dist
 
+  # using the inverse logit map to ensure sSkew_tilde is within defined bounds
   sSkew <- f_map(sSkew_tilde, lower["xi_1"], upper["xi_1"])[1, ]
 
+  # using the inverse logit map to ensure sShape_tilde is within defined bounds
   sShape <- f_map(sShape_tilde, lower["nu_1"], upper["nu_1"])[1, ]
 
   vPn <- vPw
   vPn[] <- NA
 
+  # calls f_pw2pn_SR, which returns the correct parameters that are all transformed (based on the model e.g. sGARCH -> f_map i.e. "inverse generalized logit transform" ) 
   vPn_foo <- f_pw2pn_SR(vPw, 1L, sModel, sSkew, sShape, sDist)
 
   vPn[names(vPn_foo)] <- vPn_foo
@@ -225,7 +256,7 @@ f_unmapMS <- function(vPn, spec) {
     vP_tilde <- as.numeric(SimplexUnmapping(vP_pn, K))
   } else {
     vP_pn <- tail(vPn, K * (K - 1))
-    vP_tilde <- f_unmapGamma(vP_pn, K)
+    vP_tilde <- f_unmapGamma(vP_pn, K) # unmap probabilities 
   }
   vSkew <- vPn[paste("xi", 1:K, sep = "_")]  #nas for non skew cond dist
   vShape <- vPn[paste("nu", 1:K, sep = "_")]  #nas for gauss cond dist
@@ -277,6 +308,7 @@ f_unmapMS <- function(vPn, spec) {
 
 #' @importFrom stats na.omit
 f_mapMS <- function(vPw, spec) {
+  #print("Call: f_mapMS")
   vModel <- f_getModel(spec)
   vDist <- f_getDist(spec)
   is.mix <- spec$is.mix

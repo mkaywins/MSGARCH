@@ -39,8 +39,13 @@ TransMat.MSGARCH_SPEC <- function(object, par = NULL, nahead = 1L, ...) {
   if (isTRUE(object$is.shape.ind)) {
     par <- object$func$f.do.shape.ind(par = par)
   }
-  n.params   <- object$n.params
-  n.model    <- length(n.params)
+  
+  n.params <- object$n.params
+  n.model <- length(n.params)
+  if (isTRUE(object$is.tvp)) {
+    n.params = n.params + object$n.factors
+  }
+  
   params.loc <- c(0, cumsum(n.params))
   if (!isTRUE(object$is.mix)) {
     p <- matrix(nrow = n.model, ncol = n.model)

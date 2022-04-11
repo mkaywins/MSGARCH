@@ -134,7 +134,7 @@ class SingleRegime : public Base {
   double spec_calc_pdf(const double& x) { return spec.calc_pdf(x); }
   double spec_calc_cdf(const double& x) { return spec.calc_cdf(x); }
   double spec_calc_kernel(const volatility& vol, const double& yi) {
-    return spec.calc_kernel(vol, yi);
+    return spec.calc_kernel(vol, yi); // computes the model-specific kernel i.e. the llik of a single observation
   }
 };
 
@@ -142,6 +142,7 @@ class SingleRegime : public Base {
 template <typename Model>
 prior SingleRegime<Model>::calc_prior(const NumericVector& theta) {
   bool r1 = spec.calc_r1();
+  //std::cout << "SingleRegime calc_prior: " << r1 << std::endl;
   double r2 = -1e10;
   double r3 = 0;
   if (r1) {

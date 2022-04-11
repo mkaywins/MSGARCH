@@ -2,12 +2,16 @@
 #define sGARCH_H
 
 #include <RcppArmadillo.h>
+#include "Utils.h" // is already imported by 'SingleRegime.h'
 using namespace Rcpp;
 
+// specifies the type of distribution -> one would constuct the obj with " sGarch <Symmetric<Normal>> sG();"
 template <typename distribution>
 class sGARCH {
+  
   distribution fz;  // distribution of innovations (e.g. Symmetric<Normal>)
   double alpha0, alpha1, beta;  // coefficients
+  
  public:
   std::string name;  // name of the model
   int nb_coeffs;     // total number of coefficients (including those of "fz")
@@ -22,7 +26,7 @@ class sGARCH {
 
   // constructor
   sGARCH() {
-    ineq_lb         = 1e-6;
+    ineq_lb         = 1e-6; // lower 
     ineq_ub         = 0.99999999;
     label           = CharacterVector::create("alpha0", "alpha1", "beta");
     coeffs_mean     = NumericVector::create(0.1, 0.1, 0.8);
@@ -63,11 +67,11 @@ class sGARCH {
            beta >= lower[2] && (ineq_func() < ineq_ub);
   }
 
-  // initialize volatility
+  // initialize volatility - volatility is a struct defined in Utils.h
   volatility set_vol() {
     volatility out;
     out.h = alpha0 / (1 - alpha1 - beta);
-    out.lnh = log(out.h);
+    out.lnh = log(out.h); 
     return out;
   }
 
@@ -82,8 +86,8 @@ class sGARCH {
   NumericVector rndgen(const int& n) { return fz.rndgen(n); }
   double calc_pdf(const double& x) { return fz.calc_pdf(x); }
   double calc_cdf(const double& x) { return fz.calc_cdf(x); }
-  double calc_kernel(const volatility& vol, const double& yi) {
-    return fz.calc_kernel(vol, yi);
+  double calc_kernel(const volatility& vol, const double& yi) { // computes the model-specific kernel i.e. the llik of a single observation
+    return fz.calc_kernel(vol, yi); // the kernel is dependent on the distributions, hence, the calc_kernel method from the distribution fz is called
   }
 };
 

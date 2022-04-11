@@ -33,7 +33,7 @@ class Normal {
 
   // returns loglikelihood of a single observation
   double kernel(const volatility& vol, const double& yi) {
-    return lncst - 0.5 * pow(yi, 2) / vol.h - 0.5 * vol.lnh;
+    return lncst - 0.5 * pow(yi, 2) / vol.h - 0.5 * vol.lnh; // lncst is already the constant for the loglik // 
   }
 
   // returns PDF evaluated at "x"

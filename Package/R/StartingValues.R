@@ -129,27 +129,30 @@ f_VarianceTargeting <- function(dSigma2, sModel, vpar) {
 }
 
 f_StartingValueMSGARCH <- function(y, spec, ctr = NULL) {
-  spec = f_check_spec(spec)
-  K <- spec$K
-  vSpec <- spec$name
-  vModel <- sapply(vSpec, function(x) unlist(strsplit(x, split = "_"))[1L])
-  vDist.or <- sapply(vSpec, function(x) unlist(strsplit(x, split = "_"))[2L])
-  vSkew <- sapply(vDist.or, FUN = function(x) any(c("snorm", "sstd", "sged") == x))
-  vDist <- vDist.or
-  vDist[vSkew] <- substring(vDist[vSkew], 2)
-  names(vSpec) <- NULL
-  names(vModel) <- NULL
-  names(vDist) <- NULL
-  names(vSkew) <- NULL
+  spec = f_check_spec(spec) # always check the spec
+  K <- spec$K # number of regimes
+  vSpec <- spec$name # getting the model name i.e. sGARCH_norm, sGARCH_norm
+  vModel <- sapply(vSpec, function(x) unlist(strsplit(x, split = "_"))[1L]) # splitted sGARCH_norm, sGARCH_norm -> sGARCH, sGARCH
+  vDist.or <- sapply(vSpec, function(x) unlist(strsplit(x, split = "_"))[2L]) # ----||------------------------- -> norm, norm
+  vSkew <- sapply(vDist.or, FUN = function(x) any(c("snorm", "sstd", "sged") == x)) # get av vector e.g TRUE, FALSE, FALSE - tells you if the one of the distributions in VDist are skedwed 
+  vDist <- vDist.or # 
+  vDist[vSkew] <- substring(vDist[vSkew], 2) # replace the skwed distributions with the unskwed name like snorm -> norm
+  names(vSpec) <- NULL # just deleting the names
+  names(vModel) <- NULL # ...
+  names(vDist) <- NULL # ...
+  names(vSkew) <- NULL # ...
 
-  do.mix <- spec$is.mix
+  do.mix <- spec$is.mix # is it a mixture ?
+  do.tvp <- spec$is.tvp # are the probabilities time-varying ? /add
 
-  ## Do EM
+  ## Do EM - this is the part were the mention in the paper that they are using the EM algorithm
   if (do.mix) {
-    EM_Fit <- EM_MM(y, K, constraintZero = TRUE)
+    # if it is a mixture, apply the EM_MM algorithm 
+    EM_Fit <- EM_MM(y, K, constraintZero = TRUE) # return the EM_fit
     vDecoding <- EM_Fit$vDecoding + 1L
   } else {
-    EM_Fit <- EM_HMM(y, K, constraintZero = TRUE)
+    # if it is not a mixture, apply the EM_HMM algorithm
+    EM_Fit <- EM_HMM(y, K, constraintZero = TRUE) # return the EM_fit
     vDecoding <- EM_Fit$vDecoding + 1L
   }
 
@@ -201,21 +204,26 @@ f_StartingValueMSGARCH <- function(y, spec, ctr = NULL) {
   lFixed_SR <- f_recover_fixedpar_SR(spec)
 
   for (k in 1:K) {
+    # create single regime spec from the K-spec
     lSingleRegimeSpec[[k]] <- CreateSpec(variance.spec = list(model = vModel[k]),
                                          distribution.spec = list(distribution = vDist.or[k]),
                                          constraint.spec = list(fixed = lFixed_SR[[k]]))
-
+    
+    # if the distribution is not "norm" then set the nu_1 to lShape[[k]]
     if (vDist[k] != "norm") {
       lSingleRegimeSpec[[k]]$par0["nu_1"] <- lShape[[k]]
     }
-
+    
+    # variance targeting is the act of avoiding to estimate the intercept in GARCH 1,1 by using transformations of the unconditional variance var(y_t)
     dAlpha0 <- f_VarianceTargeting(vSigma2[k], vModel[k], lSingleRegimeSpec[[k]]$par0)
 
     lSingleRegimeSpec[[k]]$par0["alpha0_1"] <- dAlpha0
     Fit <- MSGARCH::FitML(spec = lSingleRegimeSpec[[k]], data = lY[[k]], ctr = ctr)
 
+    # optimal single regime coefficients
     lSingleRegimeCoef[[k]] <- Fit$par
 
+    # remove the "_1" ending for coefficient names
     names(lSingleRegimeCoef[[k]]) <- sapply(names(lSingleRegimeCoef[[k]]), function(x) {
       unlist(strsplit(x, split = "_"))[1L]
     })
@@ -223,20 +231,33 @@ f_StartingValueMSGARCH <- function(y, spec, ctr = NULL) {
     names(lSingleRegimeCoef[[k]]) <- paste(names(lSingleRegimeCoef[[k]]), k, sep = "_")
 
   }
-
+  
+  # combine the single regime coefficients for all models 1:K
   vpar0 <- do.call(c, lSingleRegimeCoef)
-
+  
+  # coefs1, coefs2, p1, p2 vectors combined /add here I need to 
   vpar0 <- c(vpar0, vP)
-
+  
+  #print('Vpar from f_startingValueMSGARCH: ')
+  #print(vpar0)
+  # return the starting values, which are the coefficients and probabilities that were fitted for the single models seperately
   return(vpar0)
 }
 
 f_StargingValues <- function(y, spec, ctr = NULL) {
+  # this should return the starting parameters that eventually are optimised
+  #print("Call: R f_StargingValues")
+
   spec <- f_check_spec(spec)
   K <- spec$K
   if (K > 1L) {
-
+    #print("K > 1")
+    
+    # return initial parameters and probabilities as a vector - params and probs were fitted sperately for each regime and then combined to one vector
+    # this seems to speed-up optimisation
     vPn <- f_StartingValueMSGARCH(y, spec, ctr)
+    
+    # if there was an error just assign the original values to the initial parameters vPn
     if (is(vPn, "try-error")) {
       vPn <- spec$par0
     }
@@ -250,10 +271,20 @@ f_StargingValues <- function(y, spec, ctr = NULL) {
       vPn <- f_remove_fixedpar(vPn, spec$fixed.pars)
     }
     
+    if(isTRUE(spec$is.tvp)){   
+      #print("Call: f_check_covariate_matrix vPw !")
+      vPn <- f_add_logit_factors(vPn, spec, data, spec$Z)
+    }
+    # unmap the parameters vPn
     vPw <- f_unmapPar(vPn, spec, ctr$do.plm)
-
+    ##print("This fucker is called ...") DELETE
+    
+    
+    
+    # compute log likelihood given starting values for vPw
     dLLK <- f_nll(vPw, y, spec, ctr$do.plm)
 
+    # handling upper bound for likelihood
     if (dLLK == 1e+10) {
 
       vPn <- spec$par0
@@ -277,14 +308,17 @@ f_StargingValues <- function(y, spec, ctr = NULL) {
     }
 
   } else {
-
+    # for single regime
+    #print("K<= 1")
+    
     vPn <- spec$par0
 
     ### Fixed Parameters ###
     if (isTRUE(spec$fixed.pars.bool)) {
       vPn <- f_substitute_fixedpar(vPn, spec$fixed.pars)
     }
-
+    
+    # cut of the distribution e.g. sGARCH, sGARCH
     sModel <- unlist(strsplit(spec$name, split = "_"))[1]
 
     vPn["alpha0_1"] <- f_VarianceTargeting(var(c(y)), sModel, vPn)
@@ -296,6 +330,8 @@ f_StargingValues <- function(y, spec, ctr = NULL) {
 
   }
 
+  #print('from f_StargingValues final vPw:')
+  #print(vPw)
   return(vPw)
 
 }

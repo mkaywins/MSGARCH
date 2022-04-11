@@ -59,15 +59,16 @@ arma::cube array2cube_2(const SEXP& myArray) {
 
 //[[Rcpp::export]]
 arma::vec getDelta(const arma::mat& gamma, const int& m) {
+  // gamma is the transition probabilitiy matrix // this function is similiar to the one used in HamiltonFilter
   arma::mat I = eye(m, m);
   arma::mat Umat = ones(m, m);
 
   arma::vec Uvec(m);
   Uvec.fill(1);
 
-  arma::mat foo = (I - gamma + Umat).t();
+  arma::mat foo = (I - gamma + Umat).t(); // steady state equation
 
-  arma::mat delta = (foo).i() * Uvec;
+  arma::mat delta = (foo).i() * Uvec; // give unconditional probabilities of states 1:K
 
   return delta;
 }
@@ -87,7 +88,7 @@ List StartingValueEM_HMM(const arma::vec& vY, const int& K) {
 
   arma::mat mGamma(K, K);
 
-  mGamma.fill(0.1 / (K - 1.0));
+  mGamma.fill(0.1 / (K - 1.0)); // mGamma i.e. transition probabilities are initialized 
 
   for (int j = 0; j < K; j++) {
     vMu(j) = dMu * foo;

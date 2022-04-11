@@ -1,26 +1,33 @@
 f_nll <- function(vPw, data, spec, do.plm) {
-
+  #print("Call: f_nll")
+  # if there were no names for the parameters vPw - assign spec$label to the names
   if (is.null(names(vPw))) {
     vPw <- f_rename_par(vPw, spec)
   }
 
-  vPn <- f_mapPar(vPw, spec, do.plm)
+  # applies transform methods to ensure that parameters during the (optimisation) are always in bounds
+  vPn <- f_mapPar(vPw, spec, do.plm) # ERROR: HERE the factors and probs are turned
 
+  # if parameters in spec were specified that should stay fixed, they are added here
   if (isTRUE(spec$fixed.pars.bool)) {
     vPn <- f_add_fixedpar(vPn, spec$fixed.pars)
     vPn <- vPn[spec$label]
   }
 
+  # if regime specific parameters in spec were specified that should stay fixed, they are added here
   if (isTRUE(spec$regime.const.pars.bool)) {
     vPn <- f_add_regimeconstpar(vPn, spec$K, spec$label)
   }
-
+  
+  # computes the log likelihood of the model
   dLLK <- Kernel(spec, vPn, data, log = TRUE, do.prior = FALSE)
 
+  # if the log likelihood is not finite - set it to -1e+10
   if (!is.finite(dLLK)) {
     dLLK <- -1e+10
   }
-
+  
+  # return negative log likelihood
   return(-dLLK)
 }
 

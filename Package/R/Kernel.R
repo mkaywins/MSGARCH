@@ -37,34 +37,55 @@
 #Kernel <- function(object, par, data, log = TRUE, do.prior = FALSE) {
 #  UseMethod(generic = "Kernel", object)
 #}
-
-# @export
 #' @importFrom  stats dnorm
-Kernel <- function(object, par, data = NULL, log = TRUE, do.prior = FALSE) {
-  object <- f_check_spec(object)
-  data   <- f_check_y(data)
-  par    <- f_check_par(object, par)
-  lnd    <- object$rcpp.func$eval_model(par, data, do.prior)
+#' @export
+Kernel <- function(spec, par, data = NULL, log = TRUE, do.prior = FALSE) {
+  #print('Call: r Kernel')
+  #print(par)
+  spec <- f_check_spec(spec) # check the spec
+  data   <- f_check_y(data) # check the data
+  par    <- f_check_par(spec, par) # check the parameters
   
-  if (isTRUE(do.prior)) {
-    prior.mean = object$rcpp.func$get_mean()
-    prior.sd = object$rcpp.func$get_sd()
-    names(prior.mean) = names(prior.sd) = object$label[1:length(prior.mean)]
-    if (isTRUE(object$fixed.pars.bool)) {
-      lnd = lnd - sum(dnorm(par[, names(object$fixed.pars)],
-                            prior.mean[names(object$fixed.pars)],
-                            prior.sd[names(object$fixed.pars)],
+  
+  if (isTRUE(spec$is.tvp)){
+    #print("Call: Kernel with is.tvp=TRUE")
+    Z <- spec$Z # ERROR: this seems to be NULL for some Reason maybe because f_check
+    #print("par: ")
+    #print(par)
+    #print("--> type: ")
+    #print(class(par))
+    #print(is.matrix(par))
+    #print("data type:")
+    #print(class(data))
+    #print("Z type:")
+    #print(class(Z))
+    #print("do.prior")
+    #print(do.prior)
+    lnd    <- spec$rcpp.func$eval_model(par, data, Z, do.prior) # compute the likelihood of the model
+  }else{
+    lnd    <- spec$rcpp.func$eval_model(par, data, do.prior) # compute the likelihood of the model
+  }
+  
+  
+  if (isTRUE(do.prior)) { # do.prior - I don't know yet ...
+    prior.mean = spec$rcpp.func$get_mean()
+    prior.sd = spec$rcpp.func$get_sd()
+    names(prior.mean) = names(prior.sd) = spec$label[1:length(prior.mean)]
+    if (isTRUE(spec$fixed.pars.bool)) {
+      lnd = lnd - sum(dnorm(par[, names(spec$fixed.pars)],
+                            prior.mean[names(spec$fixed.pars)],
+                            prior.sd[names(spec$fixed.pars)],
                             log = TRUE))
     }
     
-    if (isTRUE(object$regime.const.pars.bool) & object$K > 1) {
-      lnd = lnd - sum(dnorm(par[, paste0(object$regime.const.pars, "_", (2:object$K))],
-                            prior.mean[paste0(object$regime.const.pars, "_", (2:object$K))],
-                            prior.sd[paste0(object$regime.const.pars, "_", (2:object$K))], log = TRUE))
+    if (isTRUE(spec$regime.const.pars.bool) & spec$K > 1) {
+      lnd = lnd - sum(dnorm(par[, paste0(spec$regime.const.pars, "_", (2:spec$K))],
+                            prior.mean[paste0(spec$regime.const.pars, "_", (2:spec$K))],
+                            prior.sd[paste0(spec$regime.const.pars, "_", (2:spec$K))], log = TRUE))
     }
   }
   
-  lnd[is.na(lnd) | is.nan(lnd) | is.infinite(lnd)] <- -1e+10
+  lnd[is.na(lnd) | is.nan(lnd) | is.infinite(lnd)] <- -1e+10 #
   if (!log)
     lnd <- exp(lnd)
   return(lnd)

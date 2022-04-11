@@ -95,6 +95,13 @@ f_check_markov_spec <- function(markov.spec) {
       stop("markov.spec$do.mix has to be a logical.")
     }
   }
+  if (is.null(markov.spec$do.tvp)) {
+    markov.spec$do.tvp = FALSE
+  } else {
+    if (!is(markov.spec$do.tvp, "logical")) {
+      stop("markov.spec$do.tvp has to be a logical.")
+    }
+  }
   return(markov.spec)
 }
 
@@ -104,7 +111,7 @@ f_error <- function(message) {
   return(FALSE)
 }
 
-# Inverse generalize logit map to constraint
+# Inverse generalize logit map to constraint - maps parameter x in [-inf, +inf] to [lower, upper]. Hence, it is ensure that all parameters are within the respecitive bounds.
 f_map <- function(x, lower, upper) {
   if (is.vector(x)) {
     x <- matrix(data = x, nrow = 1L, ncol = length(x), dimnames = list(NULL, names(x)))
@@ -120,7 +127,7 @@ f_map <- function(x, lower, upper) {
   return(x_map)
 }
 
-# Generalize logit map to real line
+# Generalize logit map to real line - maps parameter x in [lower, upper] to [-inf, +inf] 
 f_unmap <- function(x, lower, upper) {
   if (is.vector(x)) {
     x <- matrix(data = x, nrow = 1L, ncol = length(x), dimnames = list(NULL, names(x)))
@@ -150,9 +157,10 @@ f_map_deriv <- function(x, lower, upper) {
 
 # Default parameters
 f_process_ctr <- function(ctr = list(), type = 1) {
+  
   if (type == 1) {
     con <- list(par0 = NULL, nmcmc = 10000L,
-                OptimFUN = f_OptimFUNDefault,
+                OptimFUN = f_OptimFUNDefault, # sets the default optimizer (optim with BFGS)
                 SamplerFUN = f_SamplerFUNDefault,
                 nburn = 5000L, nthin = 10L,  do.se = TRUE, do.plm = FALSE,
                 nsim = 10000L, nmesh = 1000L, do.sort = TRUE)
@@ -178,6 +186,62 @@ f_check_y <- function(y) {
     stop("nan dectected in y")
   }
   return(y)
+}
+
+# Function that check if the passed X is one of the good format 
+f_check_covariate_matrix = function(spec, data, Z){
+
+  Z = as.matrix(Z)
+  
+  if(nrow(Z) != length(data)){
+    str = "'Z' must have the same number of rows as 'data'."
+    f_error(str)
+  }
+  
+  spec$Z = Z
+  spec$n.factors = ncol(Z)
+  K = spec$K
+  
+  # create a vector of factors as many columns there are in Z
+  factornames = unlist(sapply(0:(K-1), function(i) unlist(sapply(0:(K-2),
+                function(j) paste(paste0('factor', 0:(ncol(Z)-1)), i,j, sep = '_'), simplify = F)),
+                simplify = F)) 
+  
+  # initialize all factors by rnorm
+  factors0 = rnorm(length(factornames))
+  
+  names(factors0) = factornames
+  
+  # add the factors to the parameter vector of spec like: c(param, factors, probs)
+  spec$par0 = c(head(spec$par0, -( K * (K - 1) )), factors0, tail(spec$par0,  K * (K - 1)))
+  
+  # add the upper and lower bound to the upper and lower vector s.t. they would stay in bounds during the optimisation 
+  spec$upper = c(head(spec$upper, -( K * (K - 1) )), rep(1e9, length(factors0)), tail(spec$upper,  K * (K - 1)))
+  spec$lower = c(head(spec$lower, -( K * (K - 1) )), rep(-1e9, length(factors0)), tail(spec$lower,  K * (K - 1)))
+  spec$factornames = factornames
+  spec$label = names(spec$par0)
+  return(spec)
+}
+
+f_add_logit_factors = function(vPw, spec, data, Z){
+  
+  spec$Z = Z
+  spec$n.factors = ncol(Z)
+  K = spec$K
+  
+  # create a vector of factors 
+  factornames = unlist(sapply(0:(K-1), function(i) unlist(sapply(0:(K-2),
+                function(j) paste(paste0('factor', 0:(ncol(Z)-1)), i,j, sep = '_'), simplify = F)),
+                simplify = F)) 
+  
+  # initialize all factors to 0
+  factors0 = numeric(length(factornames))
+  
+  names(factors0) = factornames
+  
+  # add the factors to the parameter vector of spec like: c(param, factors, probs)
+  vPw = c(head(vPw, -( K * (K - 1) )), factors0, tail(vPw,  K * (K - 1)))
+  return(vPw)
 }
 
 # Function that checks if the passed par are of the good format
@@ -208,9 +272,71 @@ f_check_par <- function(spec, par) {
   return(par)
 }
 
+f_sort_tvpfactors <- function(spec, par){
+  # sorts the parameters with factors s.t. parameters are next to corresponding factors
+  nfactors = spec$n.factors
+  totalNbparams <- sum(spec$n.params)
+  K = spec$K
+  tmp = par
+  model_param_idx = c(0, cumsum(spec$n.params))
+  for(f in 1:nrow(par)){
+    for(i in 1:K){
+      factor_from_idx = (totalNbparams + 1 + (i-1) * nfactors) : (totalNbparams + nfactors * i)
+      param_from_idx = (1 + model_param_idx[i]) : (model_param_idx[i+1]) 
+      param_to_idx = (1 + model_param_idx[i] ) : (model_param_idx[i+1]) + nfactors * (i-1)
+      factor_to_idx = ((model_param_idx[i+1]) + nfactors * (i-1) ) + 1:nfactors
+      
+      
+      
+      tmp[f, param_to_idx] = par[f, param_from_idx]
+      tmp[f, factor_to_idx] = par[f, factor_from_idx]
+      colnames(tmp)[param_to_idx] = colnames(par)[param_from_idx]
+      colnames(tmp)[factor_to_idx] = colnames(par)[factor_from_idx]
+    }
+  }
+  return(tmp)
+}
+
+f_rev_sort_tvpfactors <- function(spec, par){
+  # sorts the parameters with factors s.t. parameters are next to corresponding factors
+  nfactors = spec$n.factors
+  totalNbparams <- sum(spec$n.params)
+  K = spec$K
+  tmp = par
+  model_param_idx = c(0, cumsum(spec$n.params))
+  for(f in 1:nrow(par)){
+    for(i in 1:K){
+      factor_from_idx = (totalNbparams + 1 + (i-1) * nfactors) : (totalNbparams + nfactors * i)
+      param_from_idx = (1 + model_param_idx[i]) : (model_param_idx[i+1]) 
+      param_to_idx = (1 + model_param_idx[i] ) : (model_param_idx[i+1]) + nfactors * (i-1)
+      factor_to_idx = ((model_param_idx[i+1]) + nfactors * (i-1) ) + 1:nfactors
+      
+      tmp[f, param_from_idx] = par[f, param_to_idx]
+      tmp[f, factor_from_idx] = par[f, factor_to_idx]
+      colnames(tmp)[param_from_idx] = colnames(par)[param_to_idx]
+      colnames(tmp)[factor_from_idx] = colnames(par)[factor_to_idx]
+    }
+  }
+  return(tmp)
+}
+
+f_add_factors_to_params <- function(spec, par){
+  # add the factors to the number of parameters
+  spec$n.params = spec$n.params + spec$n.factors
+  spec$label = colnames(par)
+  return(spec)
+}
+
+f_remove_factors_from_params <- function(spec, par){
+  # add the factors to the number of parameters
+  spec$n.params = spec$n.params - spec$n.factors
+  spec$label = colnames(par)
+  return(spec)
+}
+
 # Function that sorts the par according to the unconditional variance (Used for Bayesian estimation)
 f_sort_par <- function(spec, par) {
-  parUncVol <- par
+  parUncVol <- par # 0.1  0.1  0.7    1    1  0.1  0.1  0.8    2     2   0.5   0.5
   Nbparams <- spec$n.params
   Nmodel <- length(Nbparams)
   if (Nmodel == 1L) {
@@ -224,7 +350,7 @@ f_sort_par <- function(spec, par) {
   if(isTRUE(spec$is.mix)){
     unc.vol.all <- spec$rcpp.func$unc_vol_Rcpp(spec$func$f.do.mix(parUncVol))
   } else {
-    unc.vol.all <- spec$rcpp.func$unc_vol_Rcpp(parUncVol)
+    unc.vol.all <- spec$rcpp.func$unc_vol_Rcpp(parUncVol) # returns a maxtirx object of unconditional vola values - each col represents a regime
   }
   for (f in 1:nrow(par)) {
     for (i in 1:length(unique.spec)) {
@@ -236,13 +362,13 @@ f_sort_par <- function(spec, par) {
       idx_params   <- spec$n.params[c(idx)][1]
       unc.vol      <- unc.vol.all[f,]
       unc.vol.idx  <- unc.vol[idx]
-      unc.vol.sort <- sort(unc.vol.idx, index.return = TRUE)
+      unc.vol.sort <- sort(unc.vol.idx, index.return = TRUE) # sort according to uncon vola
       if (all(unc.vol.idx == unc.vol.sort$x)) {
         next()
       }
       new.pos.index = 1
       for (j in 1:Nmodelidx) {
-        new.pos <- which(unc.vol[j] == unc.vol.sort$x)
+        new.pos <- which(unc.vol[j] == unc.vol.sort$x) # assign the new postition according to uncon vola
         if (length(new.pos) > 1L) {
           new.pos <- new.pos[new.pos.index]
           new.pos.index <- new.pos.index + 1L
@@ -259,9 +385,9 @@ f_sort_par <- function(spec, par) {
       next()
     }
     if (!isTRUE(spec$is.mix)) {
-      p <- matrix(nrow = Nmodel, ncol = Nmodel)
+      p <- matrix(nrow = Nmodel, ncol = Nmodel) # I think this is supposed to be the probabilitiy matrix order or smthing
       for (i in 0:(Nmodel - 1L)) {
-        p[1:(Nmodel - 1), i + 1L] <- par[f,(params_loc[Nmodel + 1L] + Nmodel * i + 1 - i):(params_loc[Nmodel + 1L] + Nmodel * i + Nmodel - 1L - i)]
+        p[1:(Nmodel - 1), i + 1L] <- par[f, (params_loc[Nmodel + 1L] + Nmodel * i + 1 - i):(params_loc[Nmodel + 1L] + Nmodel * i + Nmodel - 1L - i)]
 
       }
       p[Nmodel, ] <- 1 - colSums(matrix(p[1:(Nmodel - 1L), ], ncol = Nmodel))

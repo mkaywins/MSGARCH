@@ -196,19 +196,22 @@
 #' @export
 CreateSpec <- function(variance.spec = list(model = c("sGARCH", "sGARCH")),
                        distribution.spec = list(distribution = c("norm", "norm")),
-                       switch.spec = list(do.mix = FALSE, K = NULL),
+                       switch.spec = list(do.mix = FALSE, K = NULL, do.tvp = FALSE),
                        constraint.spec  = list(fixed = list(), regime.const = NULL),
-                       prior = list(mean = list(), sd = list())) {
+                       prior = list(mean = list(), sd = list())
+                       ) {
   
-  ## check
-  variance.spec     <- f_check_variance_spec(variance.spec)
-  distribution.spec <- f_check_distribution_spec(distribution.spec, length(variance.spec$model))
-  switch.spec       <- f_check_markov_spec(switch.spec)
-  fixed.pars        <- constraint.spec$fixed
-  regime.const.pars <- constraint.spec$regime.const
-  prior.mean        <- prior$mean
-  prior.sd          <- prior$sd
+  ## check - checking if the all the specs are of the correct format
+  variance.spec     <- f_check_variance_spec(variance.spec) # variance spec is a simple list that gets checked for conformity
+  distribution.spec <- f_check_distribution_spec(distribution.spec, length(variance.spec$model)) # ... same with the distribution spec
+  switch.spec       <- f_check_markov_spec(switch.spec) # ... same with switch spec
+  fixed.pars        <- constraint.spec$fixed # getting fixed parameters 
+  regime.const.pars <- constraint.spec$regime.const # ... 
+  prior.mean        <- prior$mean # get the prior mean 
+  prior.sd          <- prior$sd # get the prior sd
   
+  
+  # throw an error if some combination of K and the number of distributions are not correct that were specified
   if (!is.null(switch.spec$K)) {
     if (length(variance.spec$model) > 1 | length(distribution.spec$model) > 1) {
       stop("you can only use the variable K if you specified one
@@ -219,15 +222,17 @@ CreateSpec <- function(variance.spec = list(model = c("sGARCH", "sGARCH")),
     }
   }
   
-  model  <- variance.spec$model
-  do.mix <- switch.spec$do.mix
-  distribution <- distribution.spec$distribution
+  model  <- variance.spec$model # get the model from the variance spec (list)
+  do.mix <- switch.spec$do.mix # get the do.mix boolean from the switch spec (list)
+  do.tvp <- switch.spec$do.tvp # get the do.tvp boolean from the switch spec (list)
+  distribution <- distribution.spec$distribution 
   
-  distribution <- distribution[1:length(model)]
-  valid.distribution <- c("norm", "std", "ged", "snorm", "sstd", "sged")
+  distribution <- distribution[1:length(model)] # only take as many distributions as there are models
+  valid.distribution <- c("norm", "std", "ged", "snorm", "sstd", "sged") # these are the valid distributions
   
   valid.model <- c("sARCH", "sGARCH", "eGARCH", "gjrGARCH", "tGARCH")
   
+  # here we just check wheter the distributions are valid - only "norm", "std", "ged", "snorm", "sstd", "sged" are valid distributions
   if (length(distribution) != length(model)) {
     stop("\nCreateSpec-->error: model vector and distribution
          vector must be of the same length")
@@ -241,6 +246,7 @@ CreateSpec <- function(variance.spec = list(model = c("sGARCH", "sGARCH")),
                   argument must be a character"))
     }
     if (!any(distribution[i] == valid.distribution)) {
+      # if the distributions dont match the valid distributions -> error
       stop(paste0("\nCreateSpec-->error: The distribution #", i, "
                   does not appear to be a valid choice."))
     }
@@ -251,7 +257,7 @@ CreateSpec <- function(variance.spec = list(model = c("sGARCH", "sGARCH")),
     do.mix = FALSE
     warning("Single regime model, automatically setting do.mix = FALSE")
   }
-  
+  # checking for model - if valid models were chosen ...
   for (i in 1:length(model)) {
     if (!any(model[i] == valid.model)) {
       stop(paste0("\nCreateSpec-->error: Model #", i, "
@@ -269,12 +275,13 @@ CreateSpec <- function(variance.spec = list(model = c("sGARCH", "sGARCH")),
     stop("\nCreateSpec-->error: do.mix must be a TRUE or FALSE\n", call. = FALSE)
   }
   
-  
+  # merge the model names with
   models.merge <- paste0(model, "_", distribution)
   
-  out <- f_spec(models = models.merge, do.mix = do.mix)
+  # the function f_spec creates out (list) - the output is a list of key parameters and functions coming from the specified models
+  out <- f_spec(models = models.merge, do.mix = do.mix, do.tvp = do.tvp)
   
-  ## rixed par
+  # fixed parameter
   fixed.pars     <- f_check_parameterConstraints(fixed.pars, out$label)
   out$fixed.pars <- fixed.pars
   
@@ -284,7 +291,7 @@ CreateSpec <- function(variance.spec = list(model = c("sGARCH", "sGARCH")),
     out$fixed.pars.bool = FALSE
   }
   
-  ## regime.const.pars
+  ## regime.const.pars - Vector of user imputed parameter set equal across regimes.
   if (!is.null(regime.const.pars)) {
     regime.const.pars <- f_check_regime_const_pars(regime.const.pars, length(variance.spec$model), out$label,
                                                    variance.spec$model, distribution.spec$distribution)
@@ -320,36 +327,51 @@ CreateSpec <- function(variance.spec = list(model = c("sGARCH", "sGARCH")),
 
 # Function used to build the specification
 #' @importFrom methods new
-f_spec <- function(models, do.mix = FALSE) {
-  
+f_spec <- function(models, do.mix = FALSE, do.tvp = FALSE) {
+  # this function seems to build a list of classes ...
   models.list <- NULL
   for (j in 1:length(models)) {
     models.list[[j]] <- get(models[j])
   }
+  #print(models.list)
+  K <- length(models) # the number of models specified 
   
-  K <- length(models)
+  # if there is only one model -> set do.mix to false
   if (K == 1L) {
     do.mix <- FALSE
   }
+  # if there are multiple models -> create an empty list - tmp
   if (K > 1L) {
     tmp <- list()
+    
+    # for each model: append an object to the tmp list
     for (i in 1:K) {
+      # the model is object is initialized with new() - the classes are all cpp classes defined in src/<<model>>.cpp
       tmp[[i]] <- methods::new(models.list[[i]])
     }
   } else {
     tmp <- methods::new(models.list[[1L]])
   }
   if (K > 1L) {
-    mod <- methods::new(MSgarch, tmp)
+    if(isTRUE(do.tvp)){
+      # if there were more than 1 components /models, the list of models acts as input for the constructor of MSgarch
+      mod <- methods::new(TVMSgarch, tmp)
+    }else{
+      # if there were more than 1 components /models, the list of models acts as input for the constructor of MSgarch
+      mod <- methods::new(MSgarch, tmp)
+    }
   } else {
     mod <- tmp
   }
-  mod$name               <- models
-  n.params               <- mod$NbParams
-  n.params.vol           <- mod$NbParamsModel
-  rcpp.func              <- list()
-  rcpp.func$calc_ht      <- mod$calc_ht
-  rcpp.func$eval_model   <- mod$eval_model
+  
+  #print(paste("theta0: ", mod$theta0))
+
+  mod$name               <- models # string that was the original input to f_spec that included "models.merge"
+  n.params               <- mod$NbParams # number of coefficients including the distribution
+  n.params.vol           <- mod$NbParamsModel # number of coefficients excluding the distribution
+  rcpp.func              <- list() # empty list
+  rcpp.func$calc_ht      <- mod$calc_ht # 
+  rcpp.func$eval_model   <- mod$eval_model # eval model is the only thing that is different when we use tvp - I will change 'eval_model' MsGarch - it does not make sense to include number of covariates here - it should be derived when we fit the model - and when no covariate matrix /df is provided we just do const probabilities
   rcpp.func$sim          <- mod$f_sim
   rcpp.func$pdf_Rcpp     <- mod$f_pdf
   rcpp.func$cdf_Rcpp     <- mod$f_cdf
@@ -367,11 +389,16 @@ f_spec <- function(models, do.mix = FALSE) {
   prior.mean             <- mod$f_get_mean()
   prior.sd               <- mod$f_get_sd()
   
+  if(isTRUE(do.tvp)){
+    rcpp.func$get_transition_probs = mod$get_all_Pt
+  }
+  
   if (K > 1L) {
-    rcpp.func$get_Pstate_Rcpp <- mod$f_get_Pstate
+    # if there is more than one model
+    rcpp.func$get_Pstate_Rcpp <- mod$f_get_Pstate # 
   } else {
     rcpp.func$get_Pstate_Rcpp <- function(par, y) {
-      FiltProb   <- matrix(data = 1, nrow = nrow(y), ncol = 1)
+      FiltProb   <- matrix(data = 1, nrow = nrow(y), ncol = 1) 
       PredProb   <- matrix(data = 1, nrow = nrow(y) + 1L, ncol = 1)
       SmoothProb <- matrix(data = 1, nrow = nrow(y) + 1L, ncol = 1)
       viterbi    <- rep(x = 0, length.out = nrow(y) - 1)
@@ -382,6 +409,7 @@ f_spec <- function(models, do.mix = FALSE) {
   
   nb_total_params <- sum(n.params)
   func <- list()
+  # define mixture functions
   func$f.do.mix <- function(par) {
     out <- f_par_mixture(K, nb_total_params, par)
     return(out)
@@ -390,6 +418,8 @@ f_spec <- function(models, do.mix = FALSE) {
     out <- f_par_mixture_reverse(K, nb_total_params, par)
     return(out)
   }
+  
+  # naming the parameters (labels) i.e. alpha0_k, ...
   loc <- c(0, cumsum(n.params))
   for (i in 1:K) {
     mod$label[(loc[i] + 1L):loc[i + 1L]] <- paste0(mod$label[(loc[i] + 1L):loc[i + 1L]], "_", i)
@@ -400,7 +430,8 @@ f_spec <- function(models, do.mix = FALSE) {
         paste0(mod$label[(loc[K + 1L] + K * i + 1L - i):(loc[K + 1L] + K * i + K - 1L - i)], "_", i + 1, "_", 1:(K - 1))
     }
   }
-  if (isTRUE(do.mix)) {
+  
+  if (isTRUE(do.mix)) { 
     mod$lower       <- as.vector(func$f.do.mix.reverse(mod$lower))
     newParamsLength <- length(mod$lower)
     mod$upper       <- as.vector(func$f.do.mix.reverse(mod$upper))
@@ -408,10 +439,13 @@ f_spec <- function(models, do.mix = FALSE) {
     mod$label       <- mod$label[1:newParamsLength]
     mod$label[(nb_total_params + 1):length(mod$label)] <- paste0("P_", 1:(K - 1))
   }
+  
+  
   mod$theta0 <- matrix(mod$theta0, ncol = length(mod$theta0))
   names(prior.mean) = names(prior.sd) = mod$label[1:length(prior.mean)]
   colnames(mod$theta0) <- mod$label
-  out <- list(par0 = mod$theta0[1L,], is.mix = do.mix, K = K, lower = mod$lower, upper = mod$upper,
+  
+  out <- list(par0 = mod$theta0[1L,], is.mix = do.mix, is.tvp = do.tvp, K = K, lower = mod$lower, upper = mod$upper,
               n.params = n.params, n.params.vol = n.params.vol, label = mod$label, name = mod$name,
               prior.mean = prior.mean, prior.sd = prior.sd, rcpp.func = rcpp.func, func = func)
   return(out)

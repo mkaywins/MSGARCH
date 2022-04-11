@@ -60,6 +60,7 @@ double adaptiveSimpsons(
   return adaptiveSimpsonsAux(f, pf, a, b, epsilon, S, fa, fb, fc, maxRecursion);
 }
 
+// concatenates y onto x  - x passed by reference
 template <typename T>
 void MyConcatenate(T& x, T y) {
   int n = y.size();
@@ -71,6 +72,18 @@ inline int MyCumsum(const IntegerVector& x, const int& n) {
   int out = 0;
   for (int i = 0; i < n; i++) out += x[i];
   return out;
+}
+
+// compute inner product
+inline double MyInner (NumericVector x,
+               NumericVector y
+) {
+  int K = x.length() ;
+  double ip = 0 ;
+  for (int k = 0 ; k < K ; k++) {
+    ip += x(k) * y(k) ;
+  }
+  return(ip) ;
 }
 
 // samples the state given a probability vector. the output is in [0,

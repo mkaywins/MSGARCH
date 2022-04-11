@@ -166,6 +166,7 @@ RcppExport SEXP _rcpp_module_boot_Ged();
 RcppExport SEXP _rcpp_module_boot_MSgarch();
 RcppExport SEXP _rcpp_module_boot_Normal();
 RcppExport SEXP _rcpp_module_boot_Student();
+RcppExport SEXP _rcpp_module_boot_TVMSgarch();
 RcppExport SEXP _rcpp_module_boot_tGARCH();
 RcppExport SEXP _rcpp_module_boot_gjrGARCH();
 RcppExport SEXP _rcpp_module_boot_sARCH();
@@ -188,6 +189,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcpp_module_boot_MSgarch", (DL_FUNC) &_rcpp_module_boot_MSgarch, 0},
     {"_rcpp_module_boot_Normal", (DL_FUNC) &_rcpp_module_boot_Normal, 0},
     {"_rcpp_module_boot_Student", (DL_FUNC) &_rcpp_module_boot_Student, 0},
+    {"_rcpp_module_boot_TVMSgarch", (DL_FUNC) &_rcpp_module_boot_TVMSgarch, 0},
     {"_rcpp_module_boot_tGARCH", (DL_FUNC) &_rcpp_module_boot_tGARCH, 0},
     {"_rcpp_module_boot_gjrGARCH", (DL_FUNC) &_rcpp_module_boot_gjrGARCH, 0},
     {"_rcpp_module_boot_sARCH", (DL_FUNC) &_rcpp_module_boot_sARCH, 0},

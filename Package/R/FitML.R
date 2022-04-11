@@ -96,28 +96,41 @@
 #' }
 #' @importFrom stats runif
 #' @export
-FitML <- function(spec, data, ctr = list()) {
+FitML <- function(spec, data, ctr = list(), Z) {
   UseMethod(generic = "FitML", spec)
 }
 
+
+
 #' @export
-FitML.MSGARCH_SPEC <- function(spec, data, ctr = list()) {
+FitML.MSGARCH_SPEC <- function(spec, data, ctr = list(), Z = NULL) {
   
+
+  # this is an s3 method of the class "MSGARCH_SPEC" - I need to find out what is in the spec object...
   time.start <- Sys.time()
-  spec <- f_check_spec(spec)
-  data_ <- f_check_y(data)
-  ctr  <- f_process_ctr(ctr)
+  spec <- f_check_spec(spec) # checks whether the get_sd() function (f_get_sd() for the model) is returning an error or not - if so - it will be treated
+  data_ <- f_check_y(data)   # checks whether the data has the right format
+  ctr  <- f_process_ctr(ctr) # sets the default parameters to this parameters e.g. optimizer or burn in period - type=1 is default - for fitml type=1 is chosen # returns ctr$par0 = NULL if initially called
   
+  # checks wheter Z is of a good format # add factors to spec$par0 # /add
+  if(isTRUE(spec$is.tvp)){   
+    #print("Call: f_check_covariate_matrix !")
+    spec <- f_check_covariate_matrix(spec, data, Z)
+
+  }
+  
+  # - check conditions on fixed.pars & set do.plm to TRUE
   if ((isTRUE(spec$fixed.pars.bool)) || (isTRUE(spec$regime.const.pars.bool))) {
     f_check_fixedpars(spec$fixed.pars, spec)
     ctr$do.plm <- TRUE
   }
   
+  # ctr$par will be NULL if f_process_ctr is called beforehand
   if (is.null(ctr$par0)) {
     vPw  <- f_StargingValues(data_, spec, ctr)
     par0 <- f_mapPar(vPw, spec, ctr$do.plm)
   } else {
-    par0 = ctr$par0
+    par0 = ctr$par0 # initial values alpha0_1 alpha1_1   beta_1 alpha0_2 alpha1_2   beta_2    P_1_1    P_2_1 = 0.1      0.1      0.8      0.1      0.1      0.8      0.5      0.5 
     vPw <- f_unmapPar(par0, spec, ctr$do.plm)
     if (isTRUE(spec$regime.const.pars.bool)) {
       vPw <- f_remove_regimeconstpar(vPw, spec$regime.const.pars, spec$K)
@@ -126,9 +139,13 @@ FitML.MSGARCH_SPEC <- function(spec, data, ctr = list()) {
       vPw <- f_remove_fixedpar(vPw, spec$fixed.pars)
     }
   }
-  optimizer <- ctr$OptimFUN(vPw, f_nll, spec, data_, ctr$do.plm)
   
+  
+  print("START - optimisation ---------------------")
+  optimizer <- ctr$OptimFUN(vPw, f_nll, spec, data_, ctr$do.plm)
+  print("END - optimisation ----------------------")
   llk <- -optimizer$value
+
   
   if (llk == 1e+10) {
     str <- "FitML -> Error during optimization"
@@ -136,8 +153,13 @@ FitML.MSGARCH_SPEC <- function(spec, data, ctr = list()) {
     stop()
   }
   
+  # optimized parameters
   vPw <- optimizer$par
+  
+  # normalize parameters
   vPn <- f_mapPar(vPw, spec, ctr$do.plm)
+  
+  # number of parameters
   np <- length(vPw)
   
   if (isTRUE(spec$fixed.pars.bool)) {
@@ -149,10 +171,32 @@ FitML.MSGARCH_SPEC <- function(spec, data, ctr = list()) {
     vPn <- f_add_regimeconstpar(vPn, spec$K, spec$label)
   }
   
+  # create a matrix from the parameters and name the columns
   par <- matrix(vPn, nrow = 1L, dimnames = list(NULL, names(vPn)))
-  par <- f_sort_par(spec, par)
+  
+  #if (isTRUE(spec$is.tvp)) {
+  #  
+  #  # sort the parameters for the final output
+  #  par_sorted <- f_sort_tvpfactors(spec, par)
+  #  
+  #  # add the factors to the parameters
+  #  spec <- f_add_factors_to_params(spec, par_sorted)
+  #  par <- par_sorted
+  #}
+  
+  if(isFALSE(spec$is.tvp)){
+    par <- f_sort_par(spec, par) 
+  }
+  
+  #if (isTRUE(spec$is.tvp)) {
+  #  spec <- f_remove_factors_from_params(spec, par)
+  #  par <- f_rev_sort_tvpfactors(spec, par) # reverse the sorting s.t. InferenceFun can handle the input to optim
+  #}
+  
   par <- as.vector(par)
   names(par) <- spec$label
+  
+  # unnormalize parameters
   vPww <- f_unmapPar(par, spec, ctr$do.plm)
   
   if (isTRUE(spec$regime.const.pars.bool)) {
@@ -165,6 +209,7 @@ FitML.MSGARCH_SPEC <- function(spec, data, ctr = list()) {
   
   elapsed.time <- Sys.time() - time.start
   
+  # compute an inference object 
   if (isTRUE(ctr$do.se)) {
     Inference <- f_InferenceFun(vPww, data_, spec, do.plm = ctr$do.plm)
   } else {
@@ -173,6 +218,10 @@ FitML.MSGARCH_SPEC <- function(spec, data, ctr = list()) {
   
   out <- list(par = par, loglik = llk, spec = spec, data = data,
               Inference = Inference, ctr = ctr)
+  
+  if(isTRUE(spec$is.tvp)){
+    out[["tvp"]] = spec$rcpp.func$get_transition_probs(par, Z)
+  }
   
   class(out) <- "MSGARCH_ML_FIT"
   return(out)
