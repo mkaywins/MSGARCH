@@ -1,3 +1,8 @@
+<!-- badges: start -->
+  [![R-CMD-check](https://github.com/mkaywins/MSGARCH/workflows/R-CMD-check/badge.svg)](https://github.com/mkaywins/MSGARCH/actions)
+  <!-- badges: end -->
+  
+
 ## Please cite the package in publications!
 
 By using `MSGARCH` you agree to the following rules: 
