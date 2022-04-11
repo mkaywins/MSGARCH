@@ -6,7 +6,9 @@ on:
   pull_request:
     branches: [main, master]
 
-
+defaults:
+  run:
+    working-directory: Package
 
 name: R-CMD-check
 jobs:
@@ -26,7 +28,6 @@ jobs:
           - {os: ubuntu-latest,   r: 'oldrel-1'}
 
     env:
-      working-directory: ./Package
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
 
@@ -42,7 +43,6 @@ jobs:
           use-public-rspm: true
 
       - uses: r-lib/actions/setup-r-dependencies@v1
-        working-directory: ${{env.working-directory}}
         with:
           extra-packages: rcmdcheck
 
