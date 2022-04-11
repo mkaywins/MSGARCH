@@ -9,7 +9,7 @@ on:
 
 defaults:
   run:
-    working-directory: ./Package
+    working_directory: ./Package
 
 
 name: R-CMD-check
@@ -30,7 +30,7 @@ jobs:
           - {os: ubuntu-latest,   r: 'oldrel-1'}
 
     env:
-      working-directory: ./Package
+      working_directory: ./Package
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
 
