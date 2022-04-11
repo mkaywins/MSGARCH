@@ -6,14 +6,15 @@ on:
   pull_request:
     branches: [main, master]
 
-name: R-CMD-check
 
+defaults:
+  run:
+    working-directory: ./Package
+
+name: R-CMD-check
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
-    defaults:
-      run:
-        working-directory: ./Package
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
 
