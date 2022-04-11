@@ -1,5 +1,0 @@
-theme: jekyll-theme-slate
-encoding: UTF-8
-Exclude: [Package,bin,test]
-plugins:
-  - jekyll-seo-tag
