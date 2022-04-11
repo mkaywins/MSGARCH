@@ -44,7 +44,7 @@ f_ExtractStateFit <- function(object) {
     }
     out[[i]]$data <- object$data
     out[[i]]$ctr <- object$ctr
-    out[[i]]$loglik <- Kernel(object = out[[i]]$spec, par = out[[i]]$par, data = out[[i]]$data, log = TRUE, do.prior = FALSE)
+    out[[i]]$loglik <- Kernel(spec = out[[i]]$spec, par = out[[i]]$par, data = out[[i]]$data, log = TRUE, do.prior = FALSE)
   }
   return(out)
 }

@@ -51,7 +51,7 @@ f_DIC <- function(spec, par, data) {
   }
   LL <- vector(mode = "numeric", length = nrow(par))
   for (i in 1:nrow(par)) {
-    LL[i] <- Kernel(object = spec, par = par[i, ], data = data_, log = TRUE, do.prior = FALSE)
+    LL[i] <- Kernel(spec = spec, par = par[i, ], data = data_, log = TRUE, do.prior = FALSE)
   }
   D.bar <- -2 * mean(x = LL)
   pV    <- stats::var(x = -2 * LL)/2
