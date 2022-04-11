@@ -1,9 +1,13 @@
-# MSGARCH
-[![Build Status](https://travis-ci.org/keblu/MSGARCH.svg?branch=master)](https://travis-ci.org/keblu/MSGARCH)
-[![CRAN](http://www.r-pkg.org/badges/version/MSGARCH)](https://cran.r-project.org/package=MSGARCH) [![Downloads](http://cranlogs.r-pkg.org/badges/MSGARCH?color=brightgreen)](http://www.r-pkg.org/pkg/MSGARCH)[![Downloads](http://cranlogs.r-pkg.org/badges/grand-total/MSGARCH?color=brightgreen)](http://www.r-pkg.org/pkg/MSGARCH)
-<a href='http://keblu.github.io/MSGARCH/'><img src='hexmsgarch_small.png' align="right"  height="120"/></a>
+# TV MSGARCH
+
  
 More about `MSGARCH` available at [http://keblu.github.io/MSGARCH/](http://keblu.github.io/MSGARCH/).
+
+
+Please note: This is a fork of [MSGARCH package](https://github.com/keblu/MSGARCH)
+This fork includes time-varying transition probabilities for the methods like `FitML()` and 
+`CreateSpec()`. This fork was created for the purpose of my master thesis. I do not take any responsibility for the functionality of the package and advise anyone to use this fork 
+at your own risk.
 
 ## Please cite the package in publications!
 
