@@ -7,6 +7,9 @@ on:
     branches: [main, master]
 
 
+defaults:
+  run:
+    working-directory: ./Package
 
 
 name: R-CMD-check
