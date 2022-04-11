@@ -3,3 +3,4 @@
 ^Contributing.md$
 bin/
 README.md
+^\.github$
