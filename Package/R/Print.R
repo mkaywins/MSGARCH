@@ -21,6 +21,9 @@ print.MSGARCH_SPEC <- function(x, ...) {
     } else {
       type <- "Markov-switching"
     }
+    if(isTRUE(spec$is.tvp)){
+      type = paste("TV", type)
+    }
     cat(paste0("Specification type: ", type,"\n"))
     cat(paste0("Specification name: ", paste(spec$name, collapse = " "),"\n"))
     cat(paste0("Number of parameters in each variance model: ", paste(spec$n.params.vol, collapse = " "),"\n"))

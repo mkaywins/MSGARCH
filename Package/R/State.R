@@ -54,10 +54,11 @@ State <- function(object, ...) {
 
 #' @rdname State
 #' @export
-State.MSGARCH_SPEC <- function(object, par, data, ...) {
+State.MSGARCH_SPEC <- function(object, par, data, Z, ...) {
   object <- f_check_spec(object)
   par    <- f_check_par(object, par)
   y      <- as.matrix(data)
+  Z      <- as.matrix(Z)
 
   if(zoo::is.zoo(data)|| is.ts(data)){
     date = zoo::index(data)
@@ -74,13 +75,17 @@ State.MSGARCH_SPEC <- function(object, par, data, ...) {
   SmoothProb <- array(dim = c(nrow(y) + 1L, nrow(par), object$K),
                       dimnames = list(as.character(c(date, date[length(date)] + 1)),
                                       paste0("draw #",1:nrow(par)), paste0("k=",1:object$K)))
-  
   viterbi <- matrix(data = NA, nrow = nrow(y), ncol = nrow(par),
                     dimnames = list(as.character(date), paste0("draw #",1:nrow(par))))
   
   out <- list(FiltProb = FiltProb, PredProb = PredProb, SmoothProb = SmoothProb, Viterbi = viterbi)
   for (i in 1:nrow(par)) {
-    tmp <- object$rcpp.func$get_Pstate_Rcpp(par[i, ], y)
+    if(isTRUE(object$is.tvp)){
+      tmp <- object$rcpp.func$get_Pstate_Rcpp(par[i, ], y, Z)
+    }else{
+      tmp <- object$rcpp.func$get_Pstate_Rcpp(par[i, ], y)
+    }
+    
     for (j in 1:object$K) {
       out$FiltProb[, i, j] <- tmp$FiltProb[, j]
       out$PredProb[, i, j] <- tmp$PredProb[, j]
@@ -106,16 +111,26 @@ State.MSGARCH_SPEC <- function(object, par, data, ...) {
 
 #' @rdname State
 #' @export
-State.MSGARCH_ML_FIT <- function(object, newdata = NULL, ...) {
+State.MSGARCH_ML_FIT <- function(object, newdata = NULL, newZ = NULL, ...) {
   data <- c(object$data, newdata)
-  out  <- State(object = object$spec, par = object$par, data = data)
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
+  out  <- State(object = object$spec, par = object$par, data = data, Z = Z)
   return(out)
 }
 
 #' @rdname State
 #' @export
-State.MSGARCH_MCMC_FIT <- function(object, newdata = NULL, ...) {
+State.MSGARCH_MCMC_FIT <- function(object, newdata = NULL, newZ = NULL, ...) {
   data <- c(object$data, newdata)
-  out  <- State(object = object$spec, par = object$par, data = data)
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
+  out  <- State(object = object$spec, par = object$par, data = data, Z = Z)
   return(out)
 }

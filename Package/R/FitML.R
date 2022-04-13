@@ -141,9 +141,7 @@ FitML.MSGARCH_SPEC <- function(spec, data, ctr = list(), Z = NULL) {
   }
   
   
-  print("START - optimisation ---------------------")
   optimizer <- ctr$OptimFUN(vPw, f_nll, spec, data_, ctr$do.plm)
-  print("END - optimisation ----------------------")
   llk <- -optimizer$value
 
   
@@ -220,6 +218,7 @@ FitML.MSGARCH_SPEC <- function(spec, data, ctr = list(), Z = NULL) {
               Inference = Inference, ctr = ctr)
   
   if(isTRUE(spec$is.tvp)){
+    out[["Z"]] = Z
     out[["tvp"]] = spec$rcpp.func$get_transition_probs(par, Z)
   }
   

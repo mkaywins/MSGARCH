@@ -204,8 +204,8 @@ f_check_covariate_matrix = function(spec, data, Z){
   
   # create a vector of factors as many columns there are in Z
   factornames = unlist(sapply(0:(K-1), function(i) unlist(sapply(0:(K-2),
-                function(j) paste(paste0('factor', 0:(ncol(Z)-1)), i,j, sep = '_'), simplify = F)),
-                simplify = F)) 
+                                                                 function(j) paste0(paste0('factor', 0:(ncol(Z)-1)),'_', i,j), simplify = F)),
+                              simplify = F)) 
   
   # initialize all factors by rnorm
   factors0 = rnorm(length(factornames))
@@ -231,7 +231,7 @@ f_add_logit_factors = function(vPw, spec, data, Z){
   
   # create a vector of factors 
   factornames = unlist(sapply(0:(K-1), function(i) unlist(sapply(0:(K-2),
-                function(j) paste(paste0('factor', 0:(ncol(Z)-1)), i,j, sep = '_'), simplify = F)),
+                function(j) paste0(paste0('factor', 0:(ncol(Z)-1)),'_', i,j), simplify = F)),
                 simplify = F)) 
   
   # initialize all factors to 0

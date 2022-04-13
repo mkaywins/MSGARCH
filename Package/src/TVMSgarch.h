@@ -111,7 +111,7 @@ public:
   }
   
   NumericVector extract_factors(const NumericVector& theta){
-    std::cout << "Call: extract_factors_it" << std::endl;
+    //std::cout << "Call: extract_factors_it" << std::endl;
     //Rcout << theta << std::endl;
     
     int K = get_K();
@@ -154,6 +154,11 @@ public:
   double HamiltonFilter(const NumericMatrix& lndMat,
                         const NumericVector& all_factors,
                         const NumericMatrix& Z);
+  
+  // get state probabilities
+  List f_get_Pstate(const NumericVector&, 
+                    const NumericVector&,
+                    const NumericMatrix& Z);
   
   // Model evaluation
   NumericVector eval_model(NumericMatrix& all_thetas,
@@ -293,6 +298,101 @@ inline double TVMSgarch::HamiltonFilter(const NumericMatrix& lndMat,
 }
 
 
+inline List TVMSgarch::f_get_Pstate(const NumericVector& theta,
+                                  const NumericVector& y,
+                                  const NumericMatrix& Z) {
+  // init
+  loadparam(theta, Z);  // load parameters
+  prep_ineq_vol();   // prepare functions related to volatility
+  volatilityVector vol = set_vol();   // initialize volatility
+  NumericMatrix lndMat = calc_lndMat(y);  // likelihood in each state
+  
+  NumericMatrix P_t;
+  NumericVector P0 = get_P0();       // get P0      from MSgarch class
+  NumericMatrix P = get_P();         // get P       from MSgarch class
+  double LND_MIN = get_LND_MIN();    // get LND_MIN from MSgarch class
+  NumericVector PLast = get_PLast(); // get PLast   from MSgarch class
+  NumericVector all_factors = extract_factors(theta);   // to get all the factors from the vector all_theta
+  int K = get_K();
+  
+  int n_step = lndMat.ncol();
+  double lnd = 0, min_lnd, delta, sum_tmp;
+  NumericVector Pspot, Ppred, lndCol, tmp;
+  arma::mat PtmpSpot(n_step + 1, K);
+  arma::mat PtmpPred(n_step + 2, K);
+  arma::mat PtmpSmooth(n_step + 2, K);
+  
+  // first step
+  Pspot = clone(P0);             // Prob(St | I(t))
+  Ppred = matrixProd(Pspot, P);  // one-step-ahead Prob(St | I(t-1))
+  for (int i = 0; i < K; i++) {
+    PtmpSpot(0, i) = Pspot(i);
+  }
+  
+  for (int i = 0; i < K; i++) {
+    PtmpPred(0, i) = Pspot(i);
+  }
+  for (int i = 0; i < K; i++) {
+    PtmpPred(1, i) = Ppred(i);
+  }
+  
+  lndCol = lndMat(_, 0);
+  min_lnd = min(lndCol),
+    delta =
+      ((min_lnd < LND_MIN) ? LND_MIN - min_lnd : 0);  // handle over/under-flows
+  tmp = Ppred *
+    exp(lndCol + delta);  // unormalized one-step-ahead Prob(St | I(t))
+  
+  // remaining steps
+  for (int t = 1; t < n_step; t++) { // loop over 1,...,n observations
+    sum_tmp = sum(tmp);              // the sum of tmp gives the summed probability for all states i.e. "sum prob over all states"
+    lnd += -delta + log(sum_tmp);    // !!! increment loglikelihood // we take the log of the summed probabilities (and correct for underflow)
+    Pspot = tmp / sum_tmp;           // Prob(St-1 | I(t-1)) / sum 
+    P_t = Pt(all_factors, Z(t,_));   // transition prob at time t
+    Ppred = matrixProd(Pspot, P_t);  // Prob(St | I(t-1)) one step ahead probability
+    
+    for (int i = 0; i < K; i++) {
+      PtmpSpot(t, i) = Pspot(i);
+    }
+    
+    for (int i = 0; i < K; i++) {
+      PtmpPred(t + 1, i) = Ppred(i);
+    }
+    
+    lndCol = lndMat(_, t);           // taking the t-th column of the loglik matrix 
+    min_lnd = min(lndCol),
+      delta = ((min_lnd < LND_MIN) ? LND_MIN - min_lnd
+                 : 0);                 // handle over/under-flows // like above ...
+    tmp = Ppred * exp(lndCol + delta); // unormalized one-step-ahead Prob(St | I(t))
+  }
+  
+  sum_tmp = sum(tmp);
+  lnd += -delta + log(sum_tmp);  // increment loglikelihood
+  Pspot = tmp / sum_tmp;
+  PLast = matrixProd(Pspot, P_t); 
+  
+  for (int i = 0; i < K; i++) {
+    PtmpSpot(n_step, i) = Pspot(i);
+  }
+  for (int i = 0; i < K; i++) {
+    PtmpPred(n_step + 1, i) = PLast(i);
+  }
+  for (int i = 0; i < K; i++) {
+    PtmpSmooth(n_step + 1, i) = PLast(i);
+  }
+  arma::mat tmpMat(1, 2);
+  arma::mat tmpMat2(2, 1);
+  for (int t = n_step; t >= 0; t--) {
+    tmpMat = (PtmpSmooth.row(t + 1) / PtmpPred.row(t + 1));
+    P_t = Pt(all_factors, Z(t,_));     // transition prob at time t
+    tmpMat2 = (as<arma::mat>(P_t) * tmpMat.t());
+    PtmpSmooth.row(t) = PtmpSpot.row(t) % tmpMat2.t();
+  }
+  
+  return List::create(
+    Rcpp::Named("FiltProb") = PtmpSpot, Rcpp::Named("PredProb") = PtmpPred,
+    Rcpp::Named("SmoothProb") = PtmpSmooth, Rcpp::Named("LL") = lndMat);
+}
 
 //------------------------------------- Model evaluation
 //-------------------------------------//

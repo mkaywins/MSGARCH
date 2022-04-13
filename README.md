@@ -4,15 +4,34 @@
 <!-- badges: end -->
 
 
-
- 
+Please note: This is a fork of [MSGARCH package](https://github.com/keblu/MSGARCH). 
 More about `MSGARCH` available at [http://keblu.github.io/MSGARCH/](http://keblu.github.io/MSGARCH/).
 
 
-Please note: This is a fork of [MSGARCH package](https://github.com/keblu/MSGARCH)
-This fork includes time-varying transition probabilities for the methods like `FitML()` and 
-`CreateSpec()`. This fork was created for the purpose of my master thesis. I do not take any responsibility for the functionality of the package and advise anyone to use this fork 
-at your own risk.
+This fork includes time-varying transition probabilities for the methods `FitML()` and 
+`CreateSpec()`. This fork was created for the purpose of my master thesis. I do not take any responsibility for the functionality of the package and advise anyone to use this fork at your own risk.
+
+
+## Installation
+
+In order to install this fork of the [MSGARCH package](https://github.com/keblu/MSGARCH) one needs to install the `devtools` package first. 
+``` r 
+install.packages("devtools")
+require("devtools")
+```
+Make sure that `MSGARCH` is uninstalled on your machine. Then download the fork of the package from this repository.
+
+``` r
+devtools::install_github("mkaywins/MSGARCH", subdir="Package")
+
+```
+Load the package.
+``` r
+library(MSGARCH)
+
+```
+
+
 
 ## Please cite the package in publications!
 
