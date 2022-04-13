@@ -54,11 +54,15 @@ State <- function(object, ...) {
 
 #' @rdname State
 #' @export
-State.MSGARCH_SPEC <- function(object, par, data, Z, ...) {
+State.MSGARCH_SPEC <- function(object, par, data, Z = NULL, ...) {
   object <- f_check_spec(object)
   par    <- f_check_par(object, par)
   y      <- as.matrix(data)
-  Z      <- as.matrix(Z)
+  
+  if(! is.null(Z)){
+    Z    <- as.matrix(Z)
+  }
+  
 
   if(zoo::is.zoo(data)|| is.ts(data)){
     date = zoo::index(data)
