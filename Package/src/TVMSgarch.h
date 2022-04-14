@@ -307,14 +307,17 @@ inline List TVMSgarch::f_get_Pstate(const NumericVector& theta,
   volatilityVector vol = set_vol();   // initialize volatility
   NumericMatrix lndMat = calc_lndMat(y);  // likelihood in each state
   
-  NumericMatrix P_t;
+  
   NumericVector P0 = get_P0();       // get P0      from MSgarch class
   NumericMatrix P = get_P();         // get P       from MSgarch class
+  NumericMatrix P_t = P;
   double LND_MIN = get_LND_MIN();    // get LND_MIN from MSgarch class
   NumericVector PLast = get_PLast(); // get PLast   from MSgarch class
   NumericVector all_factors = extract_factors(theta);   // to get all the factors from the vector all_theta
   int K = get_K();
   
+  
+    
   int n_step = lndMat.ncol();
   double lnd = 0, min_lnd, delta, sum_tmp;
   NumericVector Pspot, Ppred, lndCol, tmp;

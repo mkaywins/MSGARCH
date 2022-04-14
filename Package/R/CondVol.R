@@ -1,4 +1,6 @@
-f_CondVol <- function(object, par, data, do.its = FALSE, nahead = 1L, do.cumulative = FALSE, ctr = list(), ...) {
+f_CondVol <- function(object, par, data, do.its = FALSE, nahead = 1L,
+                      do.cumulative = FALSE, ctr = list(), Z = NULL, ...) {
+  
   object    <- f_check_spec(object)
   data_      <- f_check_y(data)
   par.check <- f_check_par(object, par)
@@ -13,10 +15,21 @@ f_CondVol <- function(object, par, data, do.its = FALSE, nahead = 1L, do.cumulat
     }
   }
   ctr       <- f_process_ctr(ctr)
+  
+
   variance  <- object$rcpp.func$calc_ht(par.check, data_)
-  P         <- State(object = object,par = par, data = data_)
+
+  if(isTRUE(object$is.tvp)){
+    P <- State(object = object,par = par, data = data_, Z = Z)
+  }else{
+    P <- State(object = object,par = par, data = data_)
+  }
+  
+  
   PredProb  <- P$PredProb
+  
   vol <- matrix(NA, nrow = dim(PredProb)[1], ncol = nrow(par.check))
+  
   if (object$K == 1) {
     for (i in 1:nrow(par.check)) {
       vol[,i] <- variance[,i]

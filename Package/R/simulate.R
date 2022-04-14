@@ -79,12 +79,13 @@ simulate.MSGARCH_MCMC_FIT <- function(object, nsim = 1L, seed = NULL, nahead = 1
 
 #For internal use and simulate function
 Sim <- function(object, data = NULL, nahead = 1L,
-                nsim = 1L, par = NULL, nburn = 500L, seed = NULL, ...) {
+                nsim = 1L, par = NULL, nburn = 500L, seed = NULL, Z=NULL, ...) {
   UseMethod(generic = "Sim", object)
 }
 
 Sim.MSGARCH_SPEC <- function(object, data = NULL, nahead = 1L,
-                             nsim = 1L, par = NULL, nburn = 500L, seed = NULL, ...) {
+                             nsim = 1L, par = NULL, nburn = 500L, seed = NULL, Z=NULL,
+                             ...) {
   
   if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
     runif(1)
@@ -135,7 +136,7 @@ Sim.MSGARCH_SPEC <- function(object, data = NULL, nahead = 1L,
   } else {
     # Simulation ahead of data
     data_  <- f_check_y(data)
-    P_0   <- matrix(State(object, par = par, data = data_)$PredProb[(length(data_) + 1L), ,], ncol = object$K)
+    P_0   <- matrix(State(object, par = par, data = data_, Z = Z)$PredProb[(length(data_) + 1L), ,], ncol = object$K)
     par   <- f_check_par(object, par)
     start <- 1
     end   <- nsim
@@ -177,16 +178,26 @@ Sim.MSGARCH_SPEC <- function(object, data = NULL, nahead = 1L,
 }
 
 Sim.MSGARCH_ML_FIT <- function(object, newdata = NULL, nahead = 1L,
-                               nsim = 1L,  nburn = 500L, seed = NULL, ...) {
+                               nsim = 1L,  nburn = 500L, seed = NULL, newZ = NULL, ...) {
   data <- c(object$data, newdata)
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
   out  <- Sim(object = object$spec, data = data, nahead = nahead,
-              nsim = nsim, par = object$par, nburn = nburn, seed = seed)
+              nsim = nsim, par = object$par, nburn = nburn, seed = seed, Z = NULL)
   return(out)
 }
 
 Sim.MSGARCH_MCMC_FIT <- function(object, newdata = NULL, nahead = 1L,
-                                 nsim = 1L, nburn = 500L, seed = NULL, ...) {
+                                 nsim = 1L, nburn = 500L, seed = NULL, newZ = NULL, ...) {
   data <- c(object$data, newdata)
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
   out  <- Sim(object = object$spec, data = data, nahead = nahead,
               nsim = nsim, par = object$par, nburn = nburn, seed = seed)
   return(out)

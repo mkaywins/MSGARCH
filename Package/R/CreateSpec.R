@@ -275,6 +275,10 @@ CreateSpec <- function(variance.spec = list(model = c("sGARCH", "sGARCH")),
     stop("\nCreateSpec-->error: do.mix must be a TRUE or FALSE\n", call. = FALSE)
   }
   
+  if(isTRUE(do.mix) && isTRUE(do.tvp)){
+    stop("\nCreateSpec-->error: do.mix is not yet implemented for do.tvp = TRUE\n", call. = FALSE)
+  }
+  
   # merge the model names with
   models.merge <- paste0(model, "_", distribution)
   

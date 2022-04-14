@@ -46,15 +46,18 @@ Volatility <- function(object, ...) {
 
 #' @rdname Volatility
 #' @export
-Volatility.MSGARCH_SPEC <- function(object, par, data, ...) {
+Volatility.MSGARCH_SPEC <- function(object, par, data, Z = NULL, ...) {
+  if(isTRUE(object$is.tvp) && is.null(Z)){
+    stop("\nVolatility-->error: Z must be a non-NULL when do.tvp=TRUE\n", call. = FALSE)
+  }
   out  <- f_CondVol(object = object, par = par, data = data,
-                    do.its = TRUE, ctr = list())
+                    do.its = TRUE, ctr = list(), Z = Z)
   return(out$vol)
 }
 
 #' @rdname Volatility
 #' @export
-Volatility.MSGARCH_ML_FIT <- function(object, newdata = NULL, ...) {
+Volatility.MSGARCH_ML_FIT <- function(object, newdata = NULL, newZ=NULL, ...) {
   data <- c(object$data, newdata)
   if(is.ts(object$data)){
     if(is.null(newdata)){
@@ -64,14 +67,21 @@ Volatility.MSGARCH_ML_FIT <- function(object, newdata = NULL, ...) {
     }
     data = as.ts(data)
   }
+  
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
+  
   out  <- f_CondVol(object = object$spec, par = object$par, data = data,
-                  do.its = TRUE, ctr = list())
+                  do.its = TRUE, ctr = list(), Z = Z)
   return(out$vol)
 }
 
 #' @rdname Volatility
 #' @export
-Volatility.MSGARCH_MCMC_FIT <- function(object, newdata = NULL, ...) {
+Volatility.MSGARCH_MCMC_FIT <- function(object, newdata = NULL, newZ=NULL, ...) {
   data <- c(object$data, newdata)
   if(is.ts(object$data)){
     if(is.null(newdata)){
@@ -81,7 +91,14 @@ Volatility.MSGARCH_MCMC_FIT <- function(object, newdata = NULL, ...) {
     }
     data = as.ts(data)
   }
+  
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
+  
   out  <- f_CondVol(object = object$spec, par = object$par, data = data,
-                  do.its = TRUE, ctr = list())
+                  do.its = TRUE, ctr = list(), Z = Z)
   return(out$vol)
 }

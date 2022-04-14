@@ -84,6 +84,7 @@ State.MSGARCH_SPEC <- function(object, par, data, Z = NULL, ...) {
   
   out <- list(FiltProb = FiltProb, PredProb = PredProb, SmoothProb = SmoothProb, Viterbi = viterbi)
   for (i in 1:nrow(par)) {
+    
     if(isTRUE(object$is.tvp)){
       tmp <- object$rcpp.func$get_Pstate_Rcpp(par[i, ], y, Z)
     }else{

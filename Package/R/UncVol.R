@@ -62,7 +62,7 @@ UncVol <- function(object, ...) {
 
 #' @rdname UncVol
 #' @export
-UncVol.MSGARCH_SPEC <- function(object, par = NULL, ctr = list(), ...) {
+UncVol.MSGARCH_SPEC <- function(object, par = NULL, ctr = list(), Z = NULL, ...) {
   object <- f_check_spec(object)
 
   if (is.vector(par)) {
@@ -79,12 +79,23 @@ UncVol.MSGARCH_SPEC <- function(object, par = NULL, ctr = list(), ...) {
     }
   }
   ctr    <- f_process_ctr(ctr, type = 2)
-  tmp <- f_CondVol(object = object,
-                 par = par,
-                 data = c(1,1),
-                 do.its = FALSE,
-                 nahead = ctr$nburn + ctr$nahead,
-                 ctr = list(nsim = nsim))$vol
+  if(isTRUE(object$is.tvp)){
+    tmp <- f_CondVol(object = object,
+                     par = par,
+                     data = c(1,1),
+                     do.its = FALSE,
+                     nahead = ctr$nburn + ctr$nahead,
+                     ctr = list(nsim = nsim),
+                     Z = Z[1:2, ])$vol
+  }else{
+    tmp <- f_CondVol(object = object,
+                     par = par,
+                     data = c(1,1),
+                     do.its = FALSE,
+                     nahead = ctr$nburn + ctr$nahead,
+                     ctr = list(nsim = nsim))$vol
+  }
+  
   out <- mean(tmp[ctr$nburn:ctr$nahead])
   return(out)
 }
@@ -92,13 +103,22 @@ UncVol.MSGARCH_SPEC <- function(object, par = NULL, ctr = list(), ...) {
 #' @rdname UncVol
 #' @export
 UncVol.MSGARCH_ML_FIT <- function(object, ctr = list(), ...) {
-  out <- UncVol(object = object$spec, par = object$par, ctr = ctr)
+  if(isTRUE(object$spec$is.tvp)){
+    out <- UncVol(object = object$spec, par = object$par, ctr = ctr, Z = object$Z)
+  }else{
+    out <- UncVol(object = object$spec, par = object$par, ctr = ctr)
+  }
+  
   return(out)
 }
 
 #' @rdname UncVol
 #' @export
 UncVol.MSGARCH_MCMC_FIT <- function(object, ctr = list(), ...) {
-  out <- UncVol(object = object$spec, par = object$par, ctr = ctr)
+  if(isTRUE(object$spec$is.tvp)){
+    out <- UncVol(object = object$spec, par = object$par, ctr = ctr, Z = object$Z)
+  }else{
+    out <- UncVol(object = object$spec, par = object$par, ctr = ctr)
+  }
   return(out)
 }
