@@ -33,12 +33,12 @@ spec <- MSGARCH::CreateSpec(switch.spec = list(do.tvp=TRUE))
 Z    <- as.matrix(data.frame(x1=1, x2=lag(SMI,1)))
 fit <- MSGARCH::FitML(spec, data = SMI[1:2499], Z = Z)
 
-testthat::test_that("Forecast", {
+testthat::test_that("Forecast TVP", {
   
   tol <- 0.05
   set.seed(1234)
-  est.forecast <- predict(object = spec, par = fit$par, newdata = SMI[1:2499], newZ = Z, nahead = 2)$vol
-  exp.forecast <- c(1.0304257211510406, 1.0340222685323162)
+  est.forecast <- predict(object = fit$spec, par = fit$par, newdata = SMI[1:2499], newZ = Z, nahead = 2)$vol
+  exp.forecast <- c(0.8604516, 0.8516941)
   
   testthat::expect_true(max(abs(est.forecast - exp.forecast)) < tol)
   
