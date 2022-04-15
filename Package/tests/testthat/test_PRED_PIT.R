@@ -26,3 +26,4 @@ testthat::test_that("PIT", {
   
   testthat::expect_true(max(abs(est.PIT - exp.PIT)) < tol)
 })
+

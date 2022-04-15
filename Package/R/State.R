@@ -57,11 +57,16 @@ State <- function(object, ...) {
 State.MSGARCH_SPEC <- function(object, par, data, Z = NULL, ...) {
   object <- f_check_spec(object)
   par    <- f_check_par(object, par)
+  
+  if(isTRUE(object$is.tvp)){
+    Z    <- f_check_Z(Z, object, data)
+    if(! is.null(Z)){
+      Z    <- as.matrix(Z)
+    }
+  }
+  
   y      <- as.matrix(data)
   
-  if(! is.null(Z)){
-    Z    <- as.matrix(Z)
-  }
   
 
   if(zoo::is.zoo(data)|| is.ts(data)){
@@ -85,7 +90,7 @@ State.MSGARCH_SPEC <- function(object, par, data, Z = NULL, ...) {
   out <- list(FiltProb = FiltProb, PredProb = PredProb, SmoothProb = SmoothProb, Viterbi = viterbi)
   for (i in 1:nrow(par)) {
     
-    if(isTRUE(object$is.tvp)){
+    if(isTRUE(object$is.tvp) && !is.null(Z)){
       tmp <- object$rcpp.func$get_Pstate_Rcpp(par[i, ], y, Z)
     }else{
       tmp <- object$rcpp.func$get_Pstate_Rcpp(par[i, ], y)

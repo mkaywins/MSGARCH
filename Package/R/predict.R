@@ -65,9 +65,9 @@
 #' @export
 predict.MSGARCH_SPEC <- function(object, newdata = NULL, nahead = 1L, 
                                  do.return.draw = FALSE, par = NULL, 
-                                 do.cumulative = FALSE, ctr = list(), ...) {
+                                 do.cumulative = FALSE, ctr = list(), newZ = NULL, ...) {
   out  <- f_CondVol(object = object, par = par, data = newdata, nahead = nahead,
-                    do.its = FALSE, do.cumulative = do.cumulative, ctr = ctr)
+                    do.its = FALSE, do.cumulative = do.cumulative, ctr = ctr, Z = newZ)
   if(!isTRUE(do.return.draw)){
     out$draw = NULL
   }
@@ -80,8 +80,15 @@ predict.MSGARCH_SPEC <- function(object, newdata = NULL, nahead = 1L,
 #' @export
 predict.MSGARCH_ML_FIT <- function(object, newdata = NULL, 
                                    nahead = 1L, do.return.draw = FALSE, 
-                                   do.cumulative = FALSE, ctr = list(), ...) {
+                                   do.cumulative = FALSE, ctr = list(), newZ = NULL, ...) {
   data <- c(object$data, newdata)
+  
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
+  
   if(is.ts(object$data)){
     if(is.null(newdata)){
       data = zoo::zooreg(data, order.by =  c(zoo::index(data)))
@@ -90,8 +97,11 @@ predict.MSGARCH_ML_FIT <- function(object, newdata = NULL,
     }
     data = as.ts(data)
   }
+  
   out  <- f_CondVol(object = object$spec, par = object$par, data = data, nahead = nahead,
-                    do.its = FALSE, do.cumulative = do.cumulative, ctr = ctr)
+                    do.its = FALSE, do.cumulative = do.cumulative, ctr = ctr, Z = Z)
+  
+  
   if(!isTRUE(do.return.draw)){
     out$draw = NULL
   }
@@ -102,8 +112,15 @@ predict.MSGARCH_ML_FIT <- function(object, newdata = NULL,
 #' @rdname predict
 #' @export
 predict.MSGARCH_MCMC_FIT <- function(object, newdata = NULL, nahead = 1L, 
-                                     do.return.draw = FALSE, do.cumulative = FALSE, ctr = list(), ...) {
+                                     do.return.draw = FALSE, do.cumulative = FALSE, ctr = list(), newZ = NULL, ...) {
   data <- c(object$data, newdata)
+  
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
+  
   if(is.ts(object$data)){
     if(is.null(newdata)){
       data = zoo::zooreg(data, order.by =  c(zoo::index(data)))
@@ -113,7 +130,7 @@ predict.MSGARCH_MCMC_FIT <- function(object, newdata = NULL, nahead = 1L,
     data = as.ts(data)
   }
   out  <- f_CondVol(object = object$spec, par = object$par, data = data, nahead = nahead,
-                    do.its = FALSE, do.cumulative = do.cumulative, ctr = ctr)
+                    do.its = FALSE, do.cumulative = do.cumulative, ctr = ctr, Z = Z)
   if(!isTRUE(do.return.draw)){
     out$draw = NULL
   }

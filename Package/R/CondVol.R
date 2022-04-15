@@ -2,7 +2,12 @@ f_CondVol <- function(object, par, data, do.its = FALSE, nahead = 1L,
                       do.cumulative = FALSE, ctr = list(), Z = NULL, ...) {
   
   object    <- f_check_spec(object)
-  data_      <- f_check_y(data)
+  data_     <- f_check_y(data)
+  
+  if(isTRUE(object$is.tvp)){
+    Z       <- f_check_Z(Z, object, data_)
+  }
+
   par.check <- f_check_par(object, par)
   if (nrow(par.check) == 1) {
     ctr     <- f_process_ctr(ctr)
@@ -19,10 +24,10 @@ f_CondVol <- function(object, par, data, do.its = FALSE, nahead = 1L,
 
   variance  <- object$rcpp.func$calc_ht(par.check, data_)
 
-  if(isTRUE(object$is.tvp)){
+  if(isTRUE(object$is.tvp) && !is.null(Z)){
     P <- State(object = object,par = par, data = data_, Z = Z)
   }else{
-    P <- State(object = object,par = par, data = data_)
+    P <- State(object = object, par = par, data = data_)
   }
   
   
@@ -47,7 +52,7 @@ f_CondVol <- function(object, par, data, do.its = FALSE, nahead = 1L,
     vol[1] <- tmp
     if (nahead > 1) {
       draw <- Sim(object = object, data = data, nahead = nahead,
-                  nsim = nsim, par = par)$draw
+                  nsim = nsim, par = par, Z = Z)$draw
       if(isTRUE(do.cumulative)){
         draw = apply(draw, 2, cumsum)
       }

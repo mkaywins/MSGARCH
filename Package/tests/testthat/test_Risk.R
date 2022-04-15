@@ -32,3 +32,22 @@ testthat::test_that("Out of sample Risk", {
   
   testthat::expect_true(max(abs(cbind(est.VaR, est.ES) - c(exp.VaR, exp.ES))) < tol)
 })
+
+## test TVP functionalities
+spec <- MSGARCH::CreateSpec(switch.spec = list(do.tvp=TRUE))
+Z    <- as.matrix(data.frame(x1=1, x2=lag(SMI,1)))
+fit <- MSGARCH::FitML(spec, data = SMI[1:2499], Z = Z)
+
+
+testthat::test_that("In Sample Risk TVP", {
+  
+  est.Risk <- MSGARCH::Risk(fit$spec, par = fit$par, data = SMI[2:2500], Z = Z)
+  
+  tol <- 0.05
+  est.VaR <- est.Risk$VaR
+  est.ES  <- est.Risk$ES
+  exp.VaR <- c(-1.96224, -1.386536)
+  exp.ES  <- c(-2.264561, -1.75527)
+  
+  testthat::expect_true(max(abs(cbind(est.VaR, est.ES) - c(exp.VaR, exp.ES))) < tol)
+})

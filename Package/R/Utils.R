@@ -188,7 +188,21 @@ f_check_y <- function(y) {
   return(y)
 }
 
-# Function that check if the passed X is one of the good format 
+# Function that checks if the passed Z is one of the good format
+f_check_Z <- function(Z, spec,  y){
+  if(isTRUE(spec$is.tvp) && is.null(Z)){
+    stop("\nerror: Z must be a non-NULL when do.tvp=TRUE\n", call. = FALSE)
+  }
+  if(!is.matrix(Z)){
+    stop("\nerror: Z is not a matrix\n", call. = FALSE)
+  }
+  if(isTRUE(spec$is.tvp) && length(y) != nrow(Z)){
+    stop("\nerror: Z must have the same number of rows as  when do.tvp=TRUE\n", call. = FALSE)
+  }
+  return(Z)
+}
+
+# Function that handles provided covariance matrices for is.tvp = TRUE
 f_check_covariate_matrix = function(spec, data, Z){
 
   Z = as.matrix(Z)
