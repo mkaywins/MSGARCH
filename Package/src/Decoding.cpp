@@ -4,6 +4,7 @@
 using namespace arma;
 using namespace Rcpp;
 
+// forward filtering backward smoothing algorithm 
 List FFBS(const arma::mat& allprobs, const arma::vec& delta,
           const arma::mat& mGamma, const int& K, const int& T) {
   arma::mat lalpha = zeros(K, T);

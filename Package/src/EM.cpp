@@ -93,7 +93,7 @@ List StartingValueEM_HMM(const arma::vec& vY, const int& K) {
   for (int j = 0; j < K; j++) {
     vMu(j) = dMu * foo;
     vSigma2(j) = dSigma2 * foo;
-    mGamma(j, j) = 0.9;
+    mGamma(j, j) = 0.9; // diagonal entries are set to 0.9
     foo += by;
   }
 
@@ -179,10 +179,14 @@ arma::mat GaussianLk(const arma::vec& vY, const arma::vec& vMu,
 List HMMlalphabeta(const arma::vec vY, const arma::mat mGamma,
                    const arma::vec vMu, const arma::vec vSigma2, const int T,
                    const int K) {
+  
+  // unconditional probabilities for states K
   arma::vec vDelta = getDelta(mGamma, K);
 
+  // compute likelihood under the assumption that vY follow a Gaussian distribution
   arma::mat allprobs = GaussianLk(vY, vMu, vSigma2, K, T, 0);
 
+  // forward filtering backward smoothing algorithm 
   List FB = FFBS(allprobs, vDelta, mGamma, K, T);
 
   FB["allprobs"] = allprobs;
@@ -254,18 +258,22 @@ arma::vec Viterbi(const arma::mat& mLLK, const arma::mat& mGamma,
 //[[Rcpp::export]]
 List EM_HMM(const arma::vec& vY, const int& K, const int& maxIter = 1e3,
             const double& tol = 1e-8, const bool& constraintZero = true) {
+  // initialising starting values for EM
   List lStarting = StartingValueEM_HMM(vY, K);
   arma::vec vMu = AccessListVectors_vec(lStarting, "vMu");
   arma::vec vSigma2 = AccessListVectors_vec(lStarting, "vSigma2");
   arma::mat mGamma = AccessListVectors_mat(lStarting, "mGamma");
 
   if (constraintZero) {
+    // set all elements to zero
     vMu.zeros();
   }
+  
   arma::vec vMu_Next = vMu;
   arma::vec vSigma2_Next = vSigma2;
   arma::mat mGamma_Next = mGamma;
 
+  // size of the data
   int T = vY.size();
 
   List fb;
@@ -281,6 +289,7 @@ List EM_HMM(const arma::vec& vY, const int& K, const int& maxIter = 1e3,
 
   arma::vec LLKSeries(maxIter + 1);
 
+  // eps compared with tol (tolerance)
   double eps = 1.0;
 
   fb = HMMlalphabeta(vY, mGamma, vMu, vSigma2, T, K);

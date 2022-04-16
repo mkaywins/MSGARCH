@@ -420,7 +420,7 @@ inline arma::cube MSgarch::calc_ht(NumericMatrix& all_thetas,
     for (int i = 1; i <= nb_obs; i++) {  // loop over observations
       increment_vol(vol, y[i - 1]);      // increment all volatilities
       
-      for (int s = 0; s < K; s++) {     // loop over all states to update ht
+      for (int s = 0; s < K; s++) {     // loop over all states to update ht for all states s
         ht(i, j, s) = vol[s].h;
       }
     }
