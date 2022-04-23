@@ -681,7 +681,7 @@ inline List MSgarch::f_rnd(const int& n, const NumericVector& theta,
 //------------------------------//
 inline NumericMatrix MSgarch::calc_lndMat(const NumericVector& y) {
   // set up
-  int nb_obs = y.size();                        // number os observations
+  int nb_obs = y.size();                        // number of observations
   NumericMatrix lndMat(K, nb_obs - 1);          // initialize a NumericMatrix with dim K x n-1
   
   // initialize
@@ -719,7 +719,7 @@ inline double MSgarch::HamiltonFilter(const NumericMatrix& lndMat) {
   // remaining steps
   for (int t = 1; t < n_step; t++) { // loop over 1,...,n observations
     sum_tmp = sum(tmp);              // the sum of tmp gives the summed probability for all states i.e. "sum prob over all states"
-    lnd += -delta + log(sum_tmp);    // !!! increment loglikelihood // we take the log of the summed probabilities (and correct for underflow)
+    lnd += -delta + log(sum_tmp);    // increment loglikelihood // we take the log of the summed probabilities (and correct for underflow)
     Pspot = tmp / sum_tmp;           // Prob(St-1 | I(t-1)) / sum 
     Ppred = matrixProd(Pspot, P);    // Prob(St | I(t-1)) one step ahead probability
     lndCol = lndMat(_, t);           // taking the t-th column of the loglik matrix 

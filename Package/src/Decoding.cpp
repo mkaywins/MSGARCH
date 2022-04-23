@@ -14,23 +14,27 @@ List FFBS(const arma::mat& allprobs, const arma::vec& delta,
   double sumfoo, lscale;
   int i;
 
-  foo = delta % allprobs.row(0).t();
-  sumfoo = sum(foo);
-  lscale = log(sumfoo);
-  foo = foo / sumfoo;
+  foo = delta % allprobs.row(0).t(); //element wise matrix multiplication of state probabilities and the lik in each state // (K x 1) % (K x 1) 
+  sumfoo = sum(foo);    // (11.4) first one step ahead prediction probability 
+  lscale = log(sumfoo); // log of summed probabilities = loglikelihood is initialised
+  foo = foo / sumfoo;   // PSpot 
 
-  lalpha.col(0) = log(foo) + lscale;
+  lalpha.col(0) = log(foo) + lscale; // log of numerator of (11.2)
+  
   for (i = 1; i < T; i++) {
-    foo = (foo.t() * mGamma).t() % allprobs.row(i).t();
+    foo = (foo.t() * mGamma).t() % allprobs.row(i).t(); // Ppred = foo.t() x mGamma  = PSpot x P(t) ... then ...  foo = Ppred x lik(i) = Prob(St | I(t))
     sumfoo = sum(foo);
-    lscale = lscale + log(sumfoo);
-    foo = foo / sumfoo;
+    lscale = lscale + log(sumfoo); // numerical stabilsation
+    foo = foo / sumfoo; // Pspot                
     lalpha.col(i) = log(foo) + lscale;
   }
+  
   for (i = 0; i < K; i++) {
     foo(i) = 1.0 / K;
   }
+  
   lscale = log((double)K);
+  
   for (i = T - 2; i >= 0; i--) {
     foo = mGamma * (allprobs.row(i + 1).t() % foo);
     lbeta.col(i) = log(foo) + lscale;

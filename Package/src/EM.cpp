@@ -6,7 +6,7 @@ using namespace arma;
 
 double MixtDensityScale(const arma::vec& vOmega, const arma::vec& vD_log,
                         const int& M) {
-  arma::vec wp_log = log(vOmega) + vD_log;
+  arma::vec wp_log = log(vOmega) + vD_log; // log 
 
   double dK = max(wp_log);
 
@@ -88,12 +88,12 @@ List StartingValueEM_HMM(const arma::vec& vY, const int& K) {
 
   arma::mat mGamma(K, K);
 
-  mGamma.fill(0.1 / (K - 1.0)); // mGamma i.e. transition probabilities are initialized 
+  mGamma.fill(0.1 / (K - 1.0));  // mGamma i.e. transition probabilities are initialized 
 
   for (int j = 0; j < K; j++) {
-    vMu(j) = dMu * foo;
-    vSigma2(j) = dSigma2 * foo;
-    mGamma(j, j) = 0.9; // diagonal entries are set to 0.9
+    vMu(j) = dMu * foo;         // initialise vector of means vMu
+    vSigma2(j) = dSigma2 * foo; // initialise vector of sigma^2 
+    mGamma(j, j) = 0.9;         // diagonal entries are set to 0.9
     foo += by;
   }
 
@@ -113,6 +113,7 @@ List StartingValueEM_MM(const arma::vec& vY, const int& K) {
   double dMu = mean(vY);
   double dSigma2 = var(vY);
 
+  // default values
   double start = 0.8;
   double end = 1.2;
   double by = (end - start) / (K * 1.0);
@@ -123,23 +124,24 @@ List StartingValueEM_MM(const arma::vec& vY, const int& K) {
   arma::vec vSigma2(K);
 
   arma::vec vP(K);
-  vP.fill(1.0 / (K * 1.0));
+  vP.fill(1.0 / (K * 1.0)); // vector of probabilities // initialised by 1/K
 
   for (j = 0; j < K; j++) {
-    vMu(j) = dMu * foo;
-    vSigma2(j) = dSigma2 * foo;
-    foo += by;
+    vMu(j) = dMu * foo; // initialise vector of means vMu
+    vSigma2(j) = dSigma2 * foo; // initialise vector of sigma^2 
+    foo += by; 
   }
 
   // initialize weights
-  arma::mat mLLK(K, iT);
-  arma::mat mW(K, iT);
-  arma::vec vLLK(iT);
-  for (t = 0; t < iT; t++) {
-    for (j = 0; j < K; j++) {
-      mLLK(j, t) = Rf_dnorm4(vY(t), vMu(j), pow(vSigma2(j), 0.5), 1);
+  arma::mat mLLK(K, iT);      // K x n matrix - n: number of obersvationin vY
+  arma::mat mW(K, iT);        // K x n matrix
+  arma::vec vLLK(iT);         // n size vector
+  for (t = 0; t < iT; t++) {  // iterate over all observations
+    for (j = 0; j < K; j++) { // iterate over all states K
+
+      mLLK(j, t) = Rf_dnorm4(vY(t), vMu(j), pow(vSigma2(j), 0.5), 1); // compute likelihood of observation y_t given normal distribution
     }
-    vLLK(t) = MixtDensityScale(vP, mLLK.col(t), K);
+    vLLK(t) = MixtDensityScale(vP, mLLK.col(t), K); // mLLK.col(t) is a vector lik for each state for a single observation
     for (j = 0; j < K; j++) {
       mW(j, t) = exp(log(vP(j)) + mLLK(j, t) - vLLK(t));
     }
@@ -162,14 +164,15 @@ List StartingValueEM_MM(const arma::vec& vY, const int& K) {
 arma::mat GaussianLk(const arma::vec& vY, const arma::vec& vMu,
                      const arma::vec& vSigma2, const int& K, const int& T,
                      const int& lg) {
+  // returns a matrix of likelihoods for all observations (rows) and for all states (cols)
   arma::mat lk(T, K);
 
   int i, j;
 
   for (i = 0; i < T; i++) {
     for (j = 0; j < K; j++) {
-      lk(i, j) = R::dnorm4(vY(i), vMu(j), sqrt(vSigma2(j)), lg);
-      if (lk(i, j) < 1e-250 && !lg) lk(i, j) = 1e-250;
+      lk(i, j) = R::dnorm4(vY(i), vMu(j), sqrt(vSigma2(j)), lg); // compute normal lik for each observation // lg=1: log(p) lg=0: p
+      if (lk(i, j) < 1e-250 && !lg) lk(i, j) = 1e-250;           // adjust the lik for underflow
     }
   }
 
@@ -179,17 +182,18 @@ arma::mat GaussianLk(const arma::vec& vY, const arma::vec& vMu,
 List HMMlalphabeta(const arma::vec vY, const arma::mat mGamma,
                    const arma::vec vMu, const arma::vec vSigma2, const int T,
                    const int K) {
+  // returns the results from the FFBS algorithm
   
   // unconditional probabilities for states K
   arma::vec vDelta = getDelta(mGamma, K);
 
   // compute likelihood under the assumption that vY follow a Gaussian distribution
-  arma::mat allprobs = GaussianLk(vY, vMu, vSigma2, K, T, 0);
+  arma::mat allprobs = GaussianLk(vY, vMu, vSigma2, K, T, 0); // lg=0: no log was taken
 
-  // forward filtering backward smoothing algorithm 
+  // forward filtering backward smoothing algorithm
   List FB = FFBS(allprobs, vDelta, mGamma, K, T);
 
-  FB["allprobs"] = allprobs;
+  FB["allprobs"] = allprobs; // likelihood
 
   return FB;
 }
@@ -260,6 +264,8 @@ List EM_HMM(const arma::vec& vY, const int& K, const int& maxIter = 1e3,
             const double& tol = 1e-8, const bool& constraintZero = true) {
   // initialising starting values for EM
   List lStarting = StartingValueEM_HMM(vY, K);
+  
+  // get the initial values for mu, sigma and the matrix for transition probabilities mGamma
   arma::vec vMu = AccessListVectors_vec(lStarting, "vMu");
   arma::vec vSigma2 = AccessListVectors_vec(lStarting, "vSigma2");
   arma::mat mGamma = AccessListVectors_mat(lStarting, "mGamma");
@@ -296,7 +302,7 @@ List EM_HMM(const arma::vec& vY, const int& K, const int& maxIter = 1e3,
   lalpha = AccessListVectors_mat(fb, "lalpha");
 
   double c = max(lalpha.col(T - 1));
-  double llk = c + log(sum(exp(lalpha.col(T - 1) - c)));
+  double llk = c + log(sum(exp(lalpha.col(T - 1) - c))); // stabilisation
 
   LLKSeries(0) = llk;
 

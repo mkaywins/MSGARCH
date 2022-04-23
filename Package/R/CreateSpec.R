@@ -46,6 +46,8 @@
 #' \itemize{
 #' \item \code{par0}: Vector (of size d) of default parameters.
 #' \item \code{is.mix}: Logical indicating if the specification is a mixture.
+#' \item \code{is.tvp}: Logical indicating if the specification should be fitted with time-varying transition probabilities.
+#'       This option only works with \code{FitML} and with \code{is.mix = FALSE}.
 #' \item \code{K}: Number of regimes.
 #' \item \code{lower}: Vector (of size d) of lower parameters' bounds.
 #' \item \code{upper}: Vector (of size d) of upper parameters' bounds.
