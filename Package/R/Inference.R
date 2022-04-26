@@ -34,7 +34,7 @@ f_InferenceFun <- function(vPw, data, spec, do.plm, mNegHessian = NULL) {
   }
   
   mJacob      <- numDeriv::jacobian(f_mapPar, vPw_mod, spec = spec, do.plm = do.plm)
-  mInvHessian <- MASS::ginv(mNegHessian)
+  mInvHessian <- MASS::ginv(mNegHessian) # The inverse of the (negative) Hessian is an estimator of the asymptotic covariance matrix. 
   mSandwitch  <- t(mJacob) %*% mInvHessian %*% mJacob
   
   vSE   <- sqrt(diag(mSandwitch))

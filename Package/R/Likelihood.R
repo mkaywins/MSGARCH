@@ -34,6 +34,7 @@ f_nll <- function(vPw, data, spec, do.plm) {
 #' @importFrom stats logLik
 #' @export
 logLik.MSGARCH_ML_FIT <- function(object, ...){
+  # this function provides the 'logLik' method to the output object of FitML() such that AIC and BIC from stats can be computed 
   out = structure(object$loglik, df = dofMSGARCH(object), 
                   nobs = length(object$data))
   return(out)

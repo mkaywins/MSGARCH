@@ -277,9 +277,6 @@ f_StargingValues <- function(y, spec, ctr = NULL) {
     }
     # unmap the parameters vPn
     vPw <- f_unmapPar(vPn, spec, ctr$do.plm)
-    ##print("This fucker is called ...") DELETE
-    
-    
     
     # compute log likelihood given starting values for vPw
     dLLK <- f_nll(vPw, y, spec, ctr$do.plm)

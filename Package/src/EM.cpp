@@ -341,7 +341,7 @@ List EM_HMM(const arma::vec& vY, const int& K, const int& maxIter = 1e3,
     iter += 1;
 
     if (iter > 10)
-      eps = abs3((llk - LLKSeries(iter - 2)) / (LLKSeries(iter - 2) + 1.0));
+      eps = abs3((llk - LLKSeries(iter - 2)) / (LLKSeries(iter - 2) + 1.0)); // relative difference in llk over iterations t vs t-2
 
     // Update Parameters
 
@@ -364,7 +364,7 @@ List EM_HMM(const arma::vec& vY, const int& K, const int& maxIter = 1e3,
   arma::vec vDelta = getDelta(mGamma_Next, K);
 
   // Decoding
-  arma::mat mLLK = log(allprobs);
+  arma::mat mLLK = log(allprobs); // llik
   arma::vec vDecoding = Viterbi(mLLK.t(), mGamma, K);
 
   LLKSeries = LLKSeries.subvec(0, iter - 2);

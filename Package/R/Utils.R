@@ -557,6 +557,7 @@ f_check_parameterPriorSd <- function(prior.sd, vParNames) {
 }
 
 
+# returns the degrees of freedom for a given object
 dofMSGARCH = function(object){
   return(length(object$spec$par0) - length(object$spec[["regime.const.pars"]]) - length(object$spec[["fixed.pars"]]))
 }
