@@ -30,6 +30,6 @@ Imports: Rcpp, coda, methods,
          zoo, expm, fanplot, MASS, numDeriv
 LinkingTo: Rcpp, RcppArmadillo
 Suggests: mcmc, testthat
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2
 NeedsCompilation: yes
 Encoding: UTF-8

@@ -310,7 +310,7 @@ public:
 
 //---------------------- load parameters of all models  ----------------------//
 inline void MSgarch::loadparam(const NumericVector& theta) {
-  //std::cout << "Call: loadparam" << std::endl;
+  //std::cout << "Call: loadparam - MSGARCH" << std::endl;
   // load the parameters of each model and the transition-probability matrix
   NumericMatrix P_mat(K, K);
   int k = 0;

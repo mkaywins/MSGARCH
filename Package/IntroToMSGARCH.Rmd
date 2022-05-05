@@ -1,0 +1,136 @@
+---
+title: "Intro to TV MSGARCH"
+author: "Maximilian Kuttner"
+date: "`r Sys.Date()`"
+theme: "yeti"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: references.bib
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+<!-- badges: start -->
+
+[![R-CMD-check](https://github.com/mkaywins/MSGARCH/workflows/R-CMD-check/badge.svg)](https://github.com/mkaywins/MSGARCH/actions)
+
+<!-- badges: end -->
+
+Please note: This is a fork of the original [MSGARCH](https://github.com/keblu/MSGARCH) package. More about `MSGARCH` available at <http://keblu.github.io/MSGARCH/>.
+
+This fork includes **time-varying transition probabilities** for the methods `FitML()` and `CreateSpec()`. This fork was created for the purpose of my master thesis. I do not take any responsibility for the functionality of the package and advise anyone to use this fork at your own risk.
+
+## What does the package do?
+
+The `MSGARCH` package implements Markov-switching (MS) GARCH (generalised autoregressive conditional heteroscedasticity) models in `R`, which are popular methods to model conditional volatility with switching regimes (states). The package heavily utilises the `Rcpp` package to expose parts of the highly efficient C++ implementation of the package to `R`. The package allows the user to perform maximum likelihood estimation and Bayesian Markov chain Monte Carlo estimation. Since this fork adds time-varying transition probabilities (TVP) to the package, it is important to note that these TVP are only supported for the maximum likelihood estimation as of today [23-04-2022].
+
+## How does the package work?
+
+Since the package supports multiple variations of the basic GARCH model. The conditional distribution of $y_t$ can be written as:
+
+$$
+y_t \ | \ (S_t = k, \ \mathcal{I}_{t-1}) \sim \mathcal{D}(0, h_{k,t}, \xi_{k}),
+$$
+
+where $\mathcal{D}(0, h_{k,t}, \xi_{k})$ is a continous distribution with zero mean and variance $h_{k,t}$ ($\xi_{k}$ stands for component specific shape parameters). This package implements the basic idead behind the MSGARCH model by [@haas2004]. In the MSGARCH model of [@haas2004] the conditional variance $h_{k,t}$ for $k = 1, ..., K$ are assumed to evolve in parallel and are only dependent on the currents state $k$. This allows for easier estimation and solve the path-dependency problem. The parameter $\mathcal{I}_{t-1}$ denotes the information set up to time $t-1$. The information set up to a particular point consists of the information of $y_{1},...,y_{t-1}$ as well as $Z_{1},...,Z_{t-1}$, where $Z_t$ denotes the covariate matrix used to estimate the state transition probabilities through a multinomial logit model in case time-varying transition probabilities are used to fit the model.
+
+### ML Estimation
+
+The ML estimation, which is implemented in `FitML()` follows the following algorithm:
+
+1.  Estimating the transition probabilities and unconditional mean and variance of the time series by the Baum-Welch algorithm (expectation maximisation algorithm). Note, the Baum-Welch algorithm assumes constant transition probabilities, i.e. the transition matrix that is estimated is assumed to be constant.
+
+2.  Assigning each observation to a particular state via the Viterbi algorithm
+
+3.  Estimating model paramters $\{\alpha_{0,k},\ \alpha_{1,k},\ \beta_{1,k},\ \xi_{k} \}$ through by computing the ML estimates for the respective single-regime models that make up the MS model
+
+4.  After the initial model parameters and transition probabilities were estimated the optimal model factor variables $\gamma_{0,lk}, \gamma_{1,lk}, ..., \gamma_{m,lk}$ (coefficients for the linear model that is required as input for the multinomial logit model) are added to the model parameter set. For identification purposes, the coefficients for a particular reference state $k_0$ are set to zero i.e. $\gamma_{0,lk_0}, ..., \gamma_{m,lk_0} = 0$.
+
+5.  After gathering all starting values for the MS-GARCH model, the algorithm uses a numerical optimisation method to find the ML estimates for all parameters. The loglikelihood that is computed by means of the Hamiliton filter is maximised trhough Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm via `optim()`, which is a \*quasi-Newton\* method where the hessian matrix is not computed analytically, but approximated at each iteration. Through the optimisation process paramter mapping functions ensure that certain paramters like $\alpha_{0,k}, \ \alpha_{1,k}, \ \beta_{1,k}$ are positive (non-negative). The mapping functions are not applied to the paramters of the logit model.
+
+The ML estimation requires the computation of the likelihood function of the model. Let $\vartheta$ be the set of regime parameters and factors for the state transition. The likelihood function reads:
+
+$$
+L(\vartheta \ |\ \mathcal{I}_T) = \prod_{t = 1}^T f(y_t \ | \ \vartheta, \mathcal{I}_{t-1}) =\\ = \prod_{t = 1}^T (\sum_{l=1}^K \sum_{k=1}^K \Pr(S_t =l \ |\ S_{t-1} = k, Z_{t-1}) \Pr(S_{t-1} = l \ | \ \vartheta, \mathcal{I}_{t-1}) f_{\mathcal{D}}(y_t \ |\ S_t = k, \vartheta, \mathcal{I}_{t-1})),
+$$
+
+where $\Pr(S_{t-1} = l \ | \ \vartheta, \mathcal{I}_{t-1})$ denote filtered probabilities that can be computed by means of the Hamilton filter [@hamilton1989].
+
+## Installation
+
+In order to install this fork of the [MSGARCH package](https://github.com/keblu/MSGARCH) one needs to install the `devtools` package first.
+
+```{r, eval=FALSE}
+install.packages("devtools")
+require("devtools")
+```
+
+Make sure that `MSGARCH` is uninstalled on your machine and removed from the package directory. Then download the fork of the package from this repository.
+
+```{r, eval=FALSE}
+devtools::install_github("mkaywins/MSGARCH", subdir="Package")
+```
+
+Load the package.
+
+```{r}
+library(MSGARCH)
+```
+
+## Getting Started
+
+In order to get started one needs to create a specification of the model that should bet created. For this task we call `CreateSpec()`. In order to make use of time-varying transition probabilities, we need to set the parameter `do.tvp`, which is part of the `switch.spec` to `TRUE`.
+
+```{r}
+spec = CreateSpec(switch.spec = list(do.tvp=TRUE),
+                  variance.spec = list(model = c("sGARCH", "sGARCH")),
+                  distribution.spec = list(distribution = c("norm", "norm"))
+                  )
+```
+
+This will create a 2-state Markov switching GARCH model. The innovations are assumed to follow a normal distribution in each state.
+
+After we have specified the model we can fit the model. In order to make use of time-varying transition probabilities, we need to provide `data` and a covariate matrix `Z` . To incorporate covariate independent effects set the first column of matrix `Z` to `1`.
+
+```{r}
+# data provided in the MSGARCH package
+data("SMI", package = "MSGARCH")
+data = SMI
+
+```
+
+```{r, fig.align='center', fig.width=7, fig.height=4, echo=FALSE}
+plot(data, type="l")
+```
+
+We create Z and set the first column to 1 and the second column to lagged values of `data` .
+
+```{r}
+Z = matrix(1, nrow = length(data) - 1, ncol = 2)
+Z[,2] = lag(data, 1)
+
+head(Z)
+```
+
+Finally, we fit the model with time-varying transition probabilities.
+
+```{r}
+fit = FitML(spec = spec, data = data[2:2500], Z = Z)
+print(fit)
+```
+
+We can compare the model to the default Markov switching GARCH model with constant transition probabilities.
+
+```{r}
+spec = CreateSpec()
+fit = FitML(spec = spec, data = data)
+print(fit)
+```

@@ -19,8 +19,6 @@ RCPP_MODULE(TVMSgarch){
   .field("ineq_ub", &MSgarch::ineq_ub)
   .field("NbParams", &MSgarch::NbParams)
   .field("NbParamsModel", &MSgarch::NbParamsModel)
-  .method("f_sim", &MSgarch::f_sim)
-  .method("f_simAhead", &MSgarch::f_simAhead)
   .method("f_get_sd", &MSgarch::get_sd)
   .method("f_set_sd", &MSgarch::set_sd)
   .method("f_get_mean", &MSgarch::get_mean)
@@ -39,6 +37,8 @@ RCPP_MODULE(TVMSgarch){
     .constructor<List>()
     .field("NbFactors", &TVMSgarch::NbFactors)
     .method("f_get_Pstate", &TVMSgarch::f_get_Pstate)
+    .method("f_sim", &TVMSgarch::f_sim)
+    .method("f_simAhead", &TVMSgarch::f_simAhead)
     .method("eval_model", &TVMSgarch::eval_model)
     .method("get_all_Pt", &TVMSgarch::get_all_Pt)
   ;

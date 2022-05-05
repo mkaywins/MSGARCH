@@ -31,14 +31,14 @@ testthat::test_that("Conditional Vol", {
 ## test TVP functionalities
 spec <- MSGARCH::CreateSpec(switch.spec = list(do.tvp=TRUE))
 Z    <- as.matrix(data.frame(x1=1, x2=lag(SMI,1)))
-fit <- MSGARCH::FitML(spec, data = SMI[1:2499], Z = Z)
+fit <- MSGARCH::FitML(spec, data = SMI[2:2500], Z = Z)
 
 testthat::test_that("Forecast TVP", {
   
   tol <- 0.05
   set.seed(1234)
-  est.forecast <- predict(object = fit$spec, par = fit$par, newdata = SMI[1:2499], newZ = Z, nahead = 2)$vol
-  exp.forecast <- c(0.8604516, 0.8516941)
+  est.forecast <- predict(object = fit$spec, par = fit$par, newdata = SMI[2:2500], newZ = Z, nahead = 2)$vol
+  exp.forecast <- c(0.8431001, 0.8714873)
   
   testthat::expect_true(max(abs(est.forecast - exp.forecast)) < tol)
   
@@ -48,7 +48,7 @@ testthat::test_that("Conditional Vol MSGARCH_ML_FIT TVP", {
   
   tol <- 0.05
   est.Vol <- Volatility(fit)[2000]
-  exp.Vol <- c(1.872766)
+  exp.Vol <- c(2.024652)
   
   testthat::expect_true(max(abs(est.Vol - exp.Vol)) < tol)
   
@@ -58,7 +58,7 @@ testthat::test_that("Conditional Vol MSGARCH_SPEC TVP", {
   
   tol <- 0.05
   est.Vol <- Volatility(fit$spec, par = fit$par, data = SMI[2:2500], Z = Z)[2000]
-  exp.Vol <- c(1.841298)
+  exp.Vol <- c(2.024652)
   
   testthat::expect_true(max(abs(est.Vol - exp.Vol)) < tol)
   

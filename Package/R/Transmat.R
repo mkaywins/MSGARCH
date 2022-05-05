@@ -43,7 +43,7 @@ TransMat.MSGARCH_SPEC <- function(object, par = NULL, nahead = 1L, ...) {
   n.params <- object$n.params
   n.model <- length(n.params)
   if (isTRUE(object$is.tvp)) {
-    n.params = n.params + object$n.factors
+    n.params = n.params + object$n.factors * (n.model-1) # need to add all the factors such that the loop can extract the probabilities at the end of the output
   }
   
   params.loc <- c(0, cumsum(n.params))
@@ -62,13 +62,18 @@ TransMat.MSGARCH_SPEC <- function(object, par = NULL, nahead = 1L, ...) {
     }
     p[1L, n.model] <- 1 - sum(p)
   }
-  if (!object$is.mix) {
+  if (!object$is.mix && !object$is.tvp) {
     p <- p %^% nahead
   }
   if (object$is.mix) {
     col_label <- paste0("State ", 1:object$K)
     row_label <- paste0("Probability")
-  } else {
+  } else if (object$is.tvp){
+    
+    col_label <- paste0("t=1", "|k=", 1:object$K)
+    row_label <- paste0("t=0|k=", 1:object$K)
+  }
+  else {
     col_label <- paste0("t+", nahead, "|k=", 1:object$K)
     row_label <- paste0("t|k=", 1:object$K)
   }

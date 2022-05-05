@@ -51,6 +51,7 @@ f_CondVol <- function(object, par, data, do.its = FALSE, nahead = 1L,
     vol    <- vector(mode = "numeric", length = nahead)
     vol[1] <- tmp
     if (nahead > 1) {
+      # MSGARCH_SPEC.Sim
       draw <- Sim(object = object, data = data, nahead = nahead,
                   nsim = nsim, par = par, Z = Z)$draw
       if(isTRUE(do.cumulative)){

@@ -53,9 +53,9 @@
 #' @importFrom stats simulate
 #' @export
 simulate.MSGARCH_SPEC  <- function(object, nsim = 1L, seed = NULL, nahead = 1L,
-                                   par = NULL, nburn = 500L, ...) {
+                                   par = NULL, nburn = 500L, Z = NULL, ...) {
   out <- Sim(object = object, data = NULL, nahead = nahead, 
-            nsim = nsim, par = par, nburn = nburn, seed = seed)
+            nsim = nsim, par = par, nburn = nburn, seed = seed, Z = Z)
   return(out)
 }
 
@@ -64,7 +64,7 @@ simulate.MSGARCH_SPEC  <- function(object, nsim = 1L, seed = NULL, nahead = 1L,
 simulate.MSGARCH_ML_FIT <- function(object, nsim = 1L, seed = NULL, nahead = 1L,
                                 nburn = 500L, ...) {
   out <- Sim(object = object$spec, data = NULL, nahead = nahead,
-              nsim = nsim, par = object$par, nburn = nburn, seed = seed)
+              nsim = nsim, par = object$par, nburn = nburn, seed = seed, Z = object$Z)
   return(out)
 }
 
@@ -84,9 +84,9 @@ Sim <- function(object, data = NULL, nahead = 1L,
 }
 
 Sim.MSGARCH_SPEC <- function(object, data = NULL, nahead = 1L,
-                             nsim = 1L, par = NULL, nburn = 500L, seed = NULL, Z=NULL,
+                             nsim = 1L, par = NULL, nburn = 500L, seed = NULL, Z = NULL,
                              ...) {
-  
+
   if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
     runif(1)
   }
@@ -114,7 +114,15 @@ Sim.MSGARCH_SPEC <- function(object, data = NULL, nahead = 1L,
                      dimnames =  list(paste0("t=",1:(nahead+nburn)),
                                       paste0("Sim #",1:(nsim * nrow(par))),paste0("k=",1:object$K)))
     for (i in 1:nrow(par)) {
-      tmp <- object$rcpp.func$sim(nahead  + nburn, nsim, par[i, ])
+      
+      if(isTRUE(object$is.tvp)){
+        # <check whether Z has the right number of rows> MISSING!
+        tmp <- object$rcpp.func$sim(nahead + nburn, nsim, par[i, ], Z)
+      }else{
+        tmp <- object$rcpp.func$sim(nahead + nburn, nsim, par[i, ])
+      }
+      
+      
       if (object$K == 1L) {
         draw[,start:end]  <- t(tmp$draws)
         state[,start:end] <- matrix(0, nrow = nahead + nburn, ncol = nsim)
@@ -146,7 +154,13 @@ Sim.MSGARCH_SPEC <- function(object, data = NULL, nahead = 1L,
                      dimnames =  list(paste0("h=",1:(nahead)),
                                       paste0("Sim #",1:(nsim * nrow(par))),paste0("k=",1:object$K)))
     for (i in 1:nrow(par)) {
-      tmp <- object$rcpp.func$simahead(y = data_, n = nahead, m = nsim, par = par[i, ], P_0[i, ])
+      
+      if(isTRUE(object$is.tvp)){
+        tmp <- object$rcpp.func$simahead(y = data_, n = nahead, m = nsim, par = par[i, ], P_0[i, ], Z)
+      }else{
+        tmp <- object$rcpp.func$simahead(y = data_, n = nahead, m = nsim, par = par[i, ], P_0[i, ])
+      }
+      
       if (object$K == 1L) {
         draw[,start:end]  <- t(tmp$draws)
         state[,start:end] <- matrix(0, nrow = nahead, ncol = nsim)

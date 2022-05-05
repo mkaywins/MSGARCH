@@ -97,11 +97,16 @@ summary.MSGARCH_ML_FIT <- function(object, ...) {
     } else {
       stable.prob <- t(TransMat(object))
     }
-    cat(paste0("Stable probabilities:","\n"))
-    stable.prob <-  as.vector(stable.prob)
-    names(stable.prob) <- paste0("State ", 1:object$spec$K)
-    print(round(stable.prob, 4))
-    cat(paste("------------------------------------------\n"))
+    if(!object$spec$is.tvp){
+      cat(paste0("Stable probabilities:","\n"))
+      stable.prob <-  as.vector(stable.prob)
+      names(stable.prob) <- paste0("State ", 1:object$spec$K)
+      print(round(stable.prob, 4))
+      cat(paste("------------------------------------------\n"))
+    }
+    
+    
+    
     #cat("Unconditional volatility:\n")
     #unc.vol = UncVol(object = object)
     #cat("In each regime:\n")

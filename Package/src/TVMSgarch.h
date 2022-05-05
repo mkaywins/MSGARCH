@@ -160,6 +160,13 @@ public:
                     const NumericVector&,
                     const NumericMatrix& Z);
   
+  // model simulation
+  Rcpp::List f_sim(const int&, const int&, const NumericVector&, const NumericMatrix& Z);
+  
+  // model simulation
+  Rcpp::List f_simAhead(const NumericVector&, const int&,  const int&, const NumericVector&,
+                        const NumericVector&, const NumericMatrix& Z);
+  
   // Model evaluation
   NumericVector eval_model(NumericMatrix& all_thetas,
                            const NumericVector& y,
@@ -218,6 +225,96 @@ inline void TVMSgarch::loadparam(const NumericVector& theta, NumericMatrix Z) {
   }
   
   set_P0(P0);
+}
+
+
+
+
+
+//------------------------------ Model simulation
+//------------------------------//
+inline List TVMSgarch::f_sim(const int& n, const int& m, const NumericVector& theta,
+                             const NumericMatrix& Z) {
+  // setup
+  NumericMatrix y(m,n);  // observations
+  NumericMatrix S(m,n);  // states of the Markov chain
+  NumericMatrix P_t;
+  NumericVector P0 = get_P0();       // get P0      from MSgarch class
+  NumericMatrix P = get_P();         // get P       from MSgarch class
+  int K = get_K();
+  NumericVector all_factors = extract_factors(theta);   // to get all the factors from the vector all_theta
+  arma::cube CondVol(m,n,K);
+  loadparam(theta, Z);       // load parameters
+  
+  // generate first draw
+  double z;            // random innovation from initial state
+  prep_ineq_vol();                    // prep for 'set_vol'
+  volatilityVector vol;  // initialize all volatilities
+  for (int i = 0; i < m; i++) {
+    S(i,0) = sampleState(P0);             // sample initial state
+    z = rndgen(S(i,0));
+    vol = set_vol();
+    for (int s = 0; s < K; s++) {
+      CondVol(i, 0, s) = sqrt(vol[s].h);
+    }
+    y(i,0) = z * sqrt(vol[S(i,0)].h);
+    for (int t = 1; t < n; t++) {
+      P_t = Pt(all_factors, Z(t,_));     // transition prob at time t
+      S(i,t) = sampleState(P_t(S(i,t - 1), _));  // sample new state
+      z = rndgen(S(i,t));                    // sample new innovation
+      increment_vol(vol, y(i,t - 1));        // increment all volatilities
+      y(i,t) = z * sqrt(vol[S(i,t)].h);        // new draw
+      for (int s = 0; s < K; s++) {
+        CondVol(i, t, s) = sqrt(vol[s].h);
+      }
+    }
+  }
+  return (List::create(Rcpp::Named("draws") = y, Rcpp::Named("state") = S,  Rcpp::Named("CondVol") = CondVol));
+}
+
+inline List TVMSgarch::f_simAhead(const NumericVector& y, const int& n, const int& m,
+                                const NumericVector& theta,
+                                const NumericVector& P0_, const NumericMatrix& Z) {
+  // setup
+  int nb_obs = y.size();  // total number of observations to simulate
+  NumericMatrix y_sim(m, n);
+  NumericMatrix S(m, n);
+  NumericMatrix P_t;
+  NumericVector P0 = get_P0();       // get P0      from MSgarch class
+  NumericMatrix P = get_P();         // get P       from MSgarch class
+  int K = get_K();
+  NumericVector all_factors = extract_factors(theta);   // to get all the factors from the vector all_theta
+  arma::cube CondVol(m,n,K);
+  loadparam(theta, Z);  // load parameters
+  prep_ineq_vol();   // prep for 'set_vol'
+  volatilityVector vol0 = set_vol();
+  double z;
+  for (int t = 1; t <= nb_obs; t++) {
+    increment_vol(vol0, y[t - 1]);  // increment all volatilities
+  }
+  for (int i = 0; i < m; i++) {
+    S(i,0) = sampleState(P0_);           // sample initial state
+    z = rndgen(S(i,0));                   
+    y_sim(i,0) = z * sqrt(vol0[S(i,0)].h);  // first draw
+  }
+  volatilityVector vol = vol0;
+  for (int i = 0; i < m; i++) {
+    for (int s = 0; s < K; s++) {
+      CondVol(i, 0, s) = sqrt(vol[s].h);
+    }
+    for (int t = 1; t < n; t++) {
+      P_t = Pt(all_factors, Z(t,_));     // transition prob at time t
+      S(i,t) = sampleState(P_t(S(i,t - 1), _));  // sample new state
+      z = rndgen(S(i,t));                    // sample new innovation
+      increment_vol(vol, y_sim(i,t - 1));    // increment all volatilities
+      y_sim(i,t) = z * sqrt(vol[S(i,t)].h);
+      for (int s = 0; s < K; s++) {
+        CondVol(i, t, s) = sqrt(vol[s].h);
+      }
+    }  // new draw
+    vol = vol0;
+  }
+  return (List::create(Rcpp::Named("draws") = y_sim, Rcpp::Named("state") = S,  Rcpp::Named("CondVol") = CondVol));
 }
 
 
