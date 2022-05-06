@@ -10,7 +10,7 @@ f_GammaParNames <- function(K) {
   }
   return(vNames)
 }
-
+ 
 # Get models from spec
 f_getModel <- function(spec) {
   name = spec$name
