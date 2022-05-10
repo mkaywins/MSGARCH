@@ -86,7 +86,7 @@ UncVol.MSGARCH_SPEC <- function(object, par = NULL, ctr = list(), Z = NULL, ...)
                      do.its = FALSE,
                      nahead = ctr$nburn + ctr$nahead,
                      ctr = list(nsim = nsim),
-                     Z = Z[1:2, ])$vol
+                     Z = Z[1:2, ])$vol #!!!!!!!!!!
   }else{
     tmp <- f_CondVol(object = object,
                      par = par,
