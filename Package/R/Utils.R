@@ -190,14 +190,15 @@ f_check_y <- function(y) {
 
 # Function that checks if the passed Z is one of the good format
 f_check_Z <- function(Z, spec,  y){
+  if(isFALSE(spec$is.tvp)) return(Z)
   if(isTRUE(spec$is.tvp) && is.null(Z)){
-    stop("\nerror: Z must be a non-NULL when do.tvp=TRUE\n", call. = FALSE)
+    stop("error: Z must be a non-NULL when do.tvp=TRUE", call. = FALSE)
   }
   if(!is.matrix(Z)){
-    stop("\nerror: Z is not a matrix\n", call. = FALSE)
+    stop("error: Z is not a matrix", call. = FALSE)
   }
   if(isTRUE(spec$is.tvp) && length(y) != nrow(Z)){
-    stop("\nerror: Z must have the same number of rows as  when do.tvp=TRUE\n", call. = FALSE)
+    stop("error: Z must have the same number of rows as data when do.tvp=TRUE", call. = FALSE)
   }
   return(Z)
 }
@@ -217,8 +218,8 @@ f_check_covariate_matrix = function(spec, data, Z){
   K = spec$K
   
   # create a vector of factors as many columns there are in Z
-  factornames = unlist(sapply(0:(K-1), function(i) unlist(sapply(0:(K-2),
-                                                                 function(j) paste0(paste0('factor', 0:(ncol(Z)-1)),'_', i,j), simplify = F)),
+  factornames = unlist(sapply(1:K, function(i) unlist(sapply(1:(K-1),
+                                                             function(j) paste0(paste0('factor', 0:(ncol(Z)-1)),'_', i,j), simplify = F)),
                               simplify = F)) 
   
   # initialize all factors by rnorm
@@ -244,7 +245,7 @@ f_add_logit_factors = function(vPw, spec, data, Z){
   K = spec$K
   
   # create a vector of factors 
-  factornames = unlist(sapply(0:(K-1), function(i) unlist(sapply(0:(K-2),
+  factornames = unlist(sapply(1:K, function(i) unlist(sapply(1:(K-1),
                 function(j) paste0(paste0('factor', 0:(ncol(Z)-1)),'_', i,j), simplify = F)),
                 simplify = F)) 
   
@@ -257,6 +258,7 @@ f_add_logit_factors = function(vPw, spec, data, Z){
   vPw = c(head(vPw, -( K * (K - 1) )), factors0, tail(vPw,  K * (K - 1)))
   return(vPw)
 }
+
 
 # Function that checks if the passed par are of the good format
 f_check_par <- function(spec, par) {
@@ -286,52 +288,40 @@ f_check_par <- function(spec, par) {
   return(par)
 }
 
-f_sort_tvpfactors <- function(spec, par){
-  # sorts the parameters with factors s.t. parameters are next to corresponding factors
-  nfactors = spec$n.factors
-  totalNbparams <- sum(spec$n.params)
+f_sort_tvppar <- function(spec, par){
+  
+  # since this function is only supported for FitML - just take the first row of par
+  par_ = par[1,]
   K = spec$K
-  tmp = par
-  model_param_idx = c(0, cumsum(spec$n.params))
-  for(f in 1:nrow(par)){
-    for(i in 1:K){
-      factor_from_idx = (totalNbparams + 1 + (i-1) * nfactors) : (totalNbparams + nfactors * i)
-      param_from_idx = (1 + model_param_idx[i]) : (model_param_idx[i+1]) 
-      param_to_idx = (1 + model_param_idx[i] ) : (model_param_idx[i+1]) + nfactors * (i-1)
-      factor_to_idx = ((model_param_idx[i+1]) + nfactors * (i-1) ) + 1:nfactors
-      
-      
-      
-      tmp[f, param_to_idx] = par[f, param_from_idx]
-      tmp[f, factor_to_idx] = par[f, factor_from_idx]
-      colnames(tmp)[param_to_idx] = colnames(par)[param_from_idx]
-      colnames(tmp)[factor_to_idx] = colnames(par)[factor_from_idx]
-    }
-  }
-  return(tmp)
-}
-
-f_rev_sort_tvpfactors <- function(spec, par){
-  # sorts the parameters with factors s.t. parameters are next to corresponding factors
-  nfactors = spec$n.factors
-  totalNbparams <- sum(spec$n.params)
-  K = spec$K
-  tmp = par
-  model_param_idx = c(0, cumsum(spec$n.params))
-  for(f in 1:nrow(par)){
-    for(i in 1:K){
-      factor_from_idx = (totalNbparams + 1 + (i-1) * nfactors) : (totalNbparams + nfactors * i)
-      param_from_idx = (1 + model_param_idx[i]) : (model_param_idx[i+1]) 
-      param_to_idx = (1 + model_param_idx[i] ) : (model_param_idx[i+1]) + nfactors * (i-1)
-      factor_to_idx = ((model_param_idx[i+1]) + nfactors * (i-1) ) + 1:nfactors
-      
-      tmp[f, param_from_idx] = par[f, param_to_idx]
-      tmp[f, factor_from_idx] = par[f, factor_to_idx]
-      colnames(tmp)[param_from_idx] = colnames(par)[param_to_idx]
-      colnames(tmp)[factor_from_idx] = colnames(par)[factor_to_idx]
-    }
-  }
-  return(tmp)
+  
+  # first, strip the factor parameters from 'par'
+  Tot_NbParams = sum(spec$n.params)
+  
+  # create a matrix with the raw spec par
+  par_raw = matrix(c(head(par_, Tot_NbParams), tail(par_,  K * (K - 1))), nrow = 1)
+  
+  # extract factors
+  idx_factors = (Tot_NbParams + 1) : (Tot_NbParams  + spec$n.factors * K * (K - 1))
+  par_factors = par_[idx_factors]
+  
+  
+  par_factors = array(par_factors, dim=c(1, spec$n.factors * (K-1), K)) # 'number of factors and the amount of the pairs thereof' times 'K' 
+  
+  # compute the unconditional volatilities for the states
+  unc.vol.all = spec$rcpp.func$unc_vol_Rcpp(par_raw) 
+  unc.vol.sort = sort(unc.vol.all,index.return = TRUE, decreasing = FALSE)  
+  
+  
+  # sort the array according to the index ranking of the unconditional vola
+  par_factors = c(par_factors[,,unc.vol.sort$ix])
+  
+  # second, run f_sort_par to sort the parameters according to the unconditional vola
+  par_ <- f_sort_par(spec, par_raw)[1,]
+  
+  # add the sorted factors back into the par matrix
+  par_ = matrix(c(head(par_, Tot_NbParams), par_factors, tail(par_,  K * (K - 1))), nrow = 1)
+  
+  return(par_)
 }
 
 f_add_factors_to_params <- function(spec, par){
@@ -348,35 +338,48 @@ f_remove_factors_from_params <- function(spec, par){
   return(spec)
 }
 
-# Function that sorts the par according to the unconditional variance (Used for Bayesian estimation)
+# Function that sorts the par according to the unconditional variance 
 f_sort_par <- function(spec, par) {
-  parUncVol <- par # 0.1  0.1  0.7    1    1  0.1  0.1  0.8    2     2   0.5   0.5
-  Nbparams <- spec$n.params
-  Nmodel <- length(Nbparams)
+  parUncVol <- par 
+  Nbparams <- spec$n.params # 3 3
+  Nmodel <- length(Nbparams) # 2
+  
+  # skip sorting if the model is a single regime 
   if (Nmodel == 1L) {
     return(par)
   }
-  name <- spec$name
-  unique.spec <- unique(name, FALSE)
-  params_loc  <- c(0, cumsum(Nbparams))
+  
+  
+  name <- spec$name # "sGARCH_norm" "sGARCH_norm"
+  unique.spec <- unique(name, FALSE) # "sGARCH_norm"
+  params_loc  <- c(0, cumsum(Nbparams)) # 0 3 6
   tmp <- par
-  pos <- 1:Nmodel
+  pos <- 1:Nmodel # 1 2
+  
+  # compute the unconditional volatility
   if(isTRUE(spec$is.mix)){
     unc.vol.all <- spec$rcpp.func$unc_vol_Rcpp(spec$func$f.do.mix(parUncVol))
   } else {
     unc.vol.all <- spec$rcpp.func$unc_vol_Rcpp(parUncVol) # returns a maxtirx object of unconditional vola values - each col represents a regime
   }
+  
+  # for every row of par
   for (f in 1:nrow(par)) {
+    
+    # for every unique regime spec in the MSGarch model
     for (i in 1:length(unique.spec)) {
+      
       postmp <- pos
       idx    <- name == unique.spec[i]
-      posidx       <- pos[idx]
-      Nmodelidx    <- length(posidx)
-      idx_loc      <- params_loc[c(idx)]
-      idx_params   <- spec$n.params[c(idx)][1]
+      posidx       <- pos[idx]         # get the position of the model "sGARCH_norm" -> 1 2
+      Nmodelidx    <- length(posidx)   # how many specs are there 
+      idx_loc      <- params_loc[c(idx)] # 0 3
+      idx_params   <- spec$n.params[c(idx)][1] # number of parameters of the spec
       unc.vol      <- unc.vol.all[f,]
       unc.vol.idx  <- unc.vol[idx]
-      unc.vol.sort <- sort(unc.vol.idx, index.return = TRUE) # sort according to uncon vola
+      unc.vol.sort <- sort(unc.vol.idx, index.return = TRUE) # sort according to uncond vola
+      
+      # the 
       if (all(unc.vol.idx == unc.vol.sort$x)) {
         next()
       }

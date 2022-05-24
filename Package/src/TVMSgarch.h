@@ -160,6 +160,11 @@ public:
                     const NumericVector&,
                     const NumericMatrix& Z);
   
+  // compute pdf for x's - relevant for PredPdf()
+  NumericVector f_pdf(const NumericVector&, const NumericVector&,
+                      const NumericVector&, const NumericMatrix&,
+                      const bool&);
+  
   // model simulation
   Rcpp::List f_sim(const int&, const int&, const NumericVector&, const NumericMatrix& Z);
   
@@ -224,7 +229,47 @@ inline void TVMSgarch::loadparam(const NumericVector& theta, NumericMatrix Z) {
 }
 
 
-
+inline NumericVector TVMSgarch::f_pdf(const NumericVector& x,
+                                    const NumericVector& theta,
+                                    const NumericVector& y,
+                                    const NumericMatrix& Z,
+                                    const bool& is_log) {
+  // computes volatility
+  int s = 0;
+  int nx = x.size();
+  int ny = y.size();
+  double sig;
+  many specs = get_specs();
+  NumericVector tmp(nx);
+  NumericVector out(nx);
+  loadparam(theta, Z);  // load parameters
+  prep_ineq_vol();   // prepare functions related to volatility
+  volatilityVector vol = set_vol();  // initialize volatility
+  
+  
+  for (int t = 0; t < ny; t++) increment_vol(vol, y[t]);
+  
+  HamiltonFilter(calc_lndMat(y), theta, Z);  // need to run HamiltonFilter to compute PLast
+  NumericVector PLast = get_PLast();         // get PLast from MSgarch class
+  
+  for (many::iterator it = specs.begin(); it != specs.end(); ++it) {
+    sig = sqrt(vol[s].h);
+    // computes PDF
+    for (int i = 0; i < nx; i++) {
+      tmp[i] = (*it)->spec_calc_pdf(x[i] / sig) / sig;  //
+      out[i] = out[i] + tmp[i] * PLast[s];
+    }
+    s++;
+  }
+  
+  if (is_log) {
+    for (int i = 0; i < nx; i++) {
+      out[i] = log(tmp[i]);
+    }
+  }
+  
+  return out;
+}
 
 
 //------------------------------ Model simulation
@@ -364,15 +409,15 @@ inline double TVMSgarch::HamiltonFilter(const NumericMatrix& lndMat,
       ((min_lnd < LND_MIN) ? LND_MIN - min_lnd : 0);  // handle over/under-flows // if min_lnd is too low, then the difference between the bound and the value is taken ow. 0
   
   tmp = Ppred *            // this gives the numerator of (11.2) in the book
-    exp(lndCol + delta);  // unormalized one-step-ahead Prob(St | I(t)) // we exponentiate the (by underflow corrected) loglikelihood s.t. we get P(St| I(t)) that was computed before by calc_lndMat and outputted as log
+    exp(lndCol + delta);   // unormalized one-step-ahead Prob(St | I(t)) // we exponentiate the (by underflow corrected) loglikelihood s.t. we get P(St| I(t)) that was computed before by calc_lndMat and outputted as log
   
   // remaining steps
   for (int t = 1; t < n_step; t++) { // loop over 1,...,n observations
     sum_tmp = sum(tmp);              // the sum of tmp gives the summed probability for all states i.e. "sum prob over all states"
     lnd += -delta + log(sum_tmp);    // !!! increment loglikelihood // we take the log of the summed probabilities (and correct for underflow)
     Pspot = tmp / sum_tmp;           // Prob(St-1 | I(t-1)) / sum 
-    P_t = Pt(all_factors, Z(t,_));     // transition prob at time t
-    Ppred = matrixProd(Pspot, P_t);   // Prob(St | I(t-1)) one step ahead probability
+    P_t = Pt(all_factors, Z(t,_));   // transition prob at time t
+    Ppred = matrixProd(Pspot, P_t);  // Prob(St | I(t-1)) one step ahead probability
     lndCol = lndMat(_, t);           // taking the t-th column of the loglik matrix 
     min_lnd = min(lndCol),
       delta = ((min_lnd < LND_MIN) ? LND_MIN - min_lnd
@@ -382,7 +427,7 @@ inline double TVMSgarch::HamiltonFilter(const NumericMatrix& lndMat,
   sum_tmp = sum(tmp);
   lnd += -delta + log(sum_tmp);  // increment loglikelihood
   Pspot = tmp / sum_tmp;
-  PLast = matrixProd(Pspot, P_t);    // the final transition matrix
+  PLast = matrixProd(Pspot, P_t);    // last one step ahead pred probability
   
   set_PLast(PLast);
   
@@ -395,7 +440,7 @@ inline List TVMSgarch::f_get_Pstate(const NumericVector& theta,
                                   const NumericMatrix& Z) {
   // init
   loadparam(theta, Z);  // load parameters
-  prep_ineq_vol();   // prepare functions related to volatility
+  prep_ineq_vol();      // prepare functions related to volatility
   volatilityVector vol = set_vol();   // initialize volatility
   NumericMatrix lndMat = calc_lndMat(y);  // likelihood in each state
   

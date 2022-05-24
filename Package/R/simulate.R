@@ -135,6 +135,7 @@ Sim.MSGARCH_SPEC <- function(object, data = NULL, nahead = 1L,
       start <- start + nsim
       end   <- end + nsim
     }
+    # remove the burn-in 
     draw  <- draw[-(1:nburn),,drop = FALSE]
     state <- state[-(1:nburn),,drop = FALSE]
     CondVol <- CondVol[-(1:nburn),,,drop = FALSE]
@@ -156,6 +157,7 @@ Sim.MSGARCH_SPEC <- function(object, data = NULL, nahead = 1L,
     for (i in 1:nrow(par)) {
       
       if(isTRUE(object$is.tvp)){
+        # I maybe  want to remove the tvp part here since P_0 is retrieved from the last PPred and stays constant
         tmp <- object$rcpp.func$simahead(y = data_, n = nahead, m = nsim, par = par[i, ], P_0[i, ], Z)
       }else{
         tmp <- object$rcpp.func$simahead(y = data_, n = nahead, m = nsim, par = par[i, ], P_0[i, ])

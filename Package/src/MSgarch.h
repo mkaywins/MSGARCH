@@ -466,6 +466,7 @@ inline NumericVector MSgarch::f_pdf(const NumericVector& x,
   return out;
 }
 
+// returns the pdf of the the provided data AND the matrix x
 inline arma::cube MSgarch::f_pdf_its(const NumericVector& theta,
                                      const NumericVector& y,
                                      const NumericMatrix& x,
@@ -480,27 +481,35 @@ inline arma::cube MSgarch::f_pdf_its(const NumericVector& theta,
   prep_ineq_vol();   // prepare functions related to volatility
   volatilityVector vol = set_vol();  // initialize volatility
   
+  // iterate over the specs i.e. 1,..,K
   for (many::iterator it = specs.begin(); it != specs.end(); ++it) {
     sig = sqrt(vol[s].h);
+    
+    // iterate over the rows of matrix x
     for (int ix = 0; ix < nx; ix++) {
-      tmp(0,ix , s) = (*it)->spec_calc_pdf(x(ix, 0) / sig) / sig;  //
+      tmp(0,ix , s) = (*it)->spec_calc_pdf(x(ix, 0) / sig) / sig;  // compute the pdf for all observations - essentially ther Kernel for a given distribution is computed
     }
-    s++;
+    s++; // s is the state
   }
   
+  // iterate over the data 
   for (int i = 1; i < ny; i++) {
     s = 0;
-    increment_vol(vol, y[i - 1]);
+    increment_vol(vol, y[i - 1]); // compute the vola object given the data
+    
+    // iterate over the specs i.e. 1,..,K
     for (many::iterator it = specs.begin(); it != specs.end(); ++it) {
-      sig = sqrt(vol[s].h);
+      sig = sqrt(vol[s].h);      // compute the sqrt(h) for state s
+      
+      // iterate over the rows of matrix x
       for (int ix = 0; ix < nx; ix++) {
-        tmp(i,ix, s) = (*it)->spec_calc_pdf(x(ix, i) / sig) / sig;  //
+        tmp(i,ix, s) = (*it)->spec_calc_pdf(x(ix, i) / sig) / sig;  // 
       }
-      s++;
+      s++; 
     }
   }
   
-  return tmp;
+  return tmp; // n x nrow(x) x K array
 }
 
 inline NumericVector MSgarch::f_cdf(const NumericVector& x,
@@ -625,21 +634,29 @@ inline List MSgarch::f_simAhead(const NumericVector& y, const int& n, const int&
   for (int t = 1; t <= nb_obs; t++) {
     increment_vol(vol0, y[t - 1]);  // increment all volatilities
   }
+  
+  // sample nsim = m states 
   for (int i = 0; i < m; i++) {
-    S(i,0) = sampleState(P0_);           // sample initial state
-    z = rndgen(S(i,0));
-    y_sim(i,0) = z * sqrt(vol0[S(i,0)].h);  // first draw
+    S(i,0) = sampleState(P0_);              // draw a state from P0_
+    z = rndgen(S(i,0));                     // sample a random number from the distr. corresponding to the sampled state
+    y_sim(i,0) = z * sqrt(vol0[S(i,0)].h);  // multiply by the std. s.t. Var(y_sim) = sig
   }
+  
+  // initial volatility vector
   volatilityVector vol = vol0;
+  
+  // iterate over all simulations nsim = m
   for (int i = 0; i < m; i++) {
+    
     for (int s = 0; s < K; s++) {
-      CondVol(i, 0, s) = sqrt(vol[s].h);
+      CondVol(i, 0, s) = sqrt(vol[s].h);       // conditional vol for each state s for t=0
     }
+    // simulate for nahead = n time points
     for (int t = 1; t < n; t++) {
-      S(i,t) = sampleState(P(S(i,t - 1), _));  // sample new state
-      z = rndgen(S(i,t));                    // sample new innovation
-      increment_vol(vol, y_sim(i,t - 1));    // increment all volatilities
-      y_sim(i,t) = z * sqrt(vol[S(i,t)].h);
+      S(i,t) = sampleState(P(S(i,t - 1), _));  // sample new state with P as the transition matirx
+      z = rndgen(S(i,t));                      // sample new innovation
+      increment_vol(vol, y_sim(i,t - 1));      // increment all volatilities
+      y_sim(i,t) = z * sqrt(vol[S(i,t)].h);    // adjust the distribution i.e create a draw like above
       for (int s = 0; s < K; s++) {
         CondVol(i, t, s) = sqrt(vol[s].h);
       }

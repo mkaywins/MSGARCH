@@ -66,9 +66,13 @@ PredPdf <- function(object, ...) {
 #' @export
 PredPdf.MSGARCH_SPEC <- function(object, x = NULL, par = NULL, data = NULL,
                               log = FALSE, do.its = FALSE, nahead = 1L, 
-                              do.cumulative = FALSE, ctr = list(), ...) {
+                              do.cumulative = FALSE, ctr = list(), Z = NULL, ...) {
+  # checks for data, object 
   object <- f_check_spec(object)
-  data_   <- f_check_y(data)
+  data_  <- f_check_y(data)
+  Z_     <- f_check_Z(Z, object,  data_)
+  
+  # convert to mat
   if (is.vector(par)) {
     par <- matrix(par, nrow = 1L)
   }
@@ -82,15 +86,21 @@ PredPdf.MSGARCH_SPEC <- function(object, x = NULL, par = NULL, data = NULL,
       nsim = ctr$nsim
     }
   }
+  # process controls parameters
   ctr    <- f_process_ctr(ctr)
   x.is.null  <-  FALSE
   if (is.null(x)) {
     x.is.null  <-  TRUE
   } 
   draw <- NULL
+  
+  # check parameters
   par_check <- f_check_par(object, par)
+  
+  # conditional pdf of in sample data
   if (isTRUE(do.its)) {
     if (is.null(x)) {
+      # if no x is provided x will be data_ as matrix (1 x n)
       x <- matrix(data = data_, ncol = length(data_))
     } else {
       x <- matrix(x)
@@ -100,25 +110,40 @@ PredPdf.MSGARCH_SPEC <- function(object, x = NULL, par = NULL, data = NULL,
         stop("x have more than 1 column: x must be a vector, NULL, or a matrix of size n x 1")
       }
     }
-    tmp <- matrix(data = 0, nrow = length(data_), ncol = nrow(x))
+    
+    tmp <- matrix(data = 0, nrow = length(data_), ncol = nrow(x)) # matrix: (n x nrow(x))
+    
     for (i in 1:nrow(par)) {
       if (object$K == 1L) {
         tmp2 <- object$rcpp.func$pdf_Rcpp_its(par_check[i, ], data_, x, FALSE)
         tmp <- tmp + tmp2[, , 1]
       } else {
-        Pstate <- State(object = object, par = par[i, ], data = data_)$PredProb
+        # get the predictive probabilities - returns an array dimension: (n x 1 x K)
+        Pstate <- State(object = object, par = par[i, ], data = data_, Z = Z)$PredProb
+        
+        # mat of dimension: (n x K)
         Pstate.tmp <- matrix(data = NA, nrow = dim(Pstate)[1L], ncol = dim(Pstate)[3L])
+        
+        # iterate over all states
         for (j in 1:dim(Pstate)[3L]) {
+          
+          # assign column of PredProb corresponding to state j to column of Pstate.tmp
           Pstate.tmp[, j] <- Pstate[, , j]
         }
-        tmp2 <- object$rcpp.func$pdf_Rcpp_its(par_check[i, ], data_, x, FALSE)
+        
+        # return the pdf of the data_ and x 
+        tmp2 <- object$rcpp.func$pdf_Rcpp_its(par_check[i, ], data_, x, FALSE) # n x nrow(x) x K array
+        
         for (k in 1:object$K) {
+          # 'pdf array of state k' (element-wise multiplication) 'PredProb for state k' and adding the product up across the different states i.e. (11.3)
           tmp <- tmp + tmp2[, , k] * matrix(Pstate.tmp[1:(nrow(Pstate.tmp) - 1L), k], 
                                             ncol = nrow(x), nrow = length(data))
         }
       }
     }
-    tmp <- tmp/nrow(par)
+    
+    # approximation of the predictive pdf 1,...,T 
+    tmp <- tmp / nrow(par) 
     rownames(tmp) <-  paste0("t=",1:length(data_))
     if(zoo::is.zoo(data)){
       tmp = zoo::zooreg(tmp, order.by = zoo::index(data))
@@ -138,11 +163,20 @@ PredPdf.MSGARCH_SPEC <- function(object, x = NULL, par = NULL, data = NULL,
     }
     tmp <- matrix(data = 0, nrow = nahead, ncol = nrow(x))
     for (i in 1:nrow(par)) {
-      tmp[1, ] <- tmp[1, ] + object$rcpp.func$pdf_Rcpp(x, par_check[i, ], data_, FALSE)
+      # pdf is computed for all elements of the vector x --> data_ is need as an argument in this case to compute PLast 
+      if(isTRUE(object$is.tvp)){
+        tmp[1, ] <- tmp[1, ] + object$rcpp.func$pdf_Rcpp(x, par_check[i, ], data_, Z, FALSE)
+      }else{
+        tmp[1, ] <- tmp[1, ] + object$rcpp.func$pdf_Rcpp(x, par_check[i, ], data_, FALSE)
+      }
+      
     }
-    tmp <- tmp/nrow(par)
+    tmp <- tmp/nrow(par) # approximation of predictive pdf
+    
+    # multistep prediction
     if (nahead > 1) {
-      draw <- Sim(object = object, data = data_, nahead = nahead, nsim = nsim, par = par)$draw
+      draw <- Sim(object = object, data = data_, nahead = nahead, nsim = nsim, par = par, Z = Z)$draw
+      # cumulative sum if needed
       if(isTRUE(do.cumulative)){
         draw = apply(draw, 2, cumsum)
       }
@@ -164,12 +198,15 @@ PredPdf.MSGARCH_SPEC <- function(object, x = NULL, par = NULL, data = NULL,
   if (!isTRUE(ctr$do.return.draw)) {
     draw <- NULL
   }
+  
+  # apply log if needed
   if (log) {
     tmp2 <- log(tmp)
     colnames(tmp2) <- colnames(tmp)
     rownames(tmp2) <- rownames(tmp)
     tmp <- tmp2
   }
+  # if x is null then 
   if(isTRUE(x.is.null) && !is.ts(data)){
     out <- tmp[,1]
   } else {
@@ -182,7 +219,8 @@ PredPdf.MSGARCH_SPEC <- function(object, x = NULL, par = NULL, data = NULL,
 #' @rdname PredPdf
 #' @export
 PredPdf.MSGARCH_ML_FIT <- function(object, x = NULL, newdata = NULL,
-                                log = FALSE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE, ctr = list(), ...) {
+                                log = FALSE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE, ctr = list(), newZ = NULL,
+                                ...) {
   data <- c(object$data, newdata)
   if(is.ts(object$data)){
     if(is.null(newdata)){
@@ -192,15 +230,23 @@ PredPdf.MSGARCH_ML_FIT <- function(object, x = NULL, newdata = NULL,
     }
     data = as.ts(data)
   }
+  
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
+  
   out  <- PredPdf(object = object$spec, x = x, par = object$par, data = data,
-               log = log, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr)
+               log = log, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr,
+               Z = Z)
   return(out)
 }
 
 #' @rdname PredPdf
 #' @export
 PredPdf.MSGARCH_MCMC_FIT <- function(object, x = NULL, newdata = NULL,
-                                  log = FALSE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE, ctr = list(), ...) {
+                                  log = FALSE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE, ctr = list(), newZ = NULL, ...) {
   data <- c(object$data, newdata)
   if(is.ts(object$data)){
     if(is.null(newdata)){
@@ -210,7 +256,13 @@ PredPdf.MSGARCH_MCMC_FIT <- function(object, x = NULL, newdata = NULL,
     }
     data = as.ts(data)
   }
+  
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
   out  <- PredPdf(object = object$spec, x = x, par = object$par, data = data,
-               log = log, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr)
+               log = log, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr, Z = Z)
   return(out)
 }

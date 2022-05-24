@@ -55,19 +55,13 @@ State <- function(object, ...) {
 #' @rdname State
 #' @export
 State.MSGARCH_SPEC <- function(object, par, data, Z = NULL, ...) {
+  
   object <- f_check_spec(object)
   par    <- f_check_par(object, par)
   
-  if(isTRUE(object$is.tvp)){
-    Z    <- f_check_Z(Z, object, data)
-    if(! is.null(Z)){
-      Z    <- as.matrix(Z)
-    }
-  }
-  
-  y      <- as.matrix(data)
-  
-  
+  # check if spec is tvp and whether Z is of a good format
+  Z <- f_check_Z(Z, object, data)
+  y <- as.matrix(data)
 
   if(zoo::is.zoo(data)|| is.ts(data)){
     date = zoo::index(data)
@@ -88,6 +82,7 @@ State.MSGARCH_SPEC <- function(object, par, data, Z = NULL, ...) {
                     dimnames = list(as.character(date), paste0("draw #",1:nrow(par))))
   
   out <- list(FiltProb = FiltProb, PredProb = PredProb, SmoothProb = SmoothProb, Viterbi = viterbi)
+  
   for (i in 1:nrow(par)) {
     
     if(isTRUE(object$is.tvp) && !is.null(Z)){

@@ -88,7 +88,7 @@ Risk <- function(object, ...) {
 #' @rdname Risk
 #' @export
 Risk.MSGARCH_SPEC <- function(object, par, data, alpha = c(0.01, 0.05), nahead = 1L, do.es = TRUE,
-                              do.its = FALSE, do.cumulative = FALSE, ctr = list(), ...) {
+                              do.its = FALSE, do.cumulative = FALSE, ctr = list(), Z = NULL, ...) {
   
   if (is.vector(par)) {
     par <- matrix(par, nrow = 1L)
@@ -104,19 +104,27 @@ Risk.MSGARCH_SPEC <- function(object, par, data, alpha = c(0.01, 0.05), nahead =
     }
   }
   object  <- f_check_spec(object)
-  data_    <- f_check_y(data)
+  data_   <- f_check_y(data)
+  Z_      <- f_check_Z(Z, object, data_)
+  # set default ctr for type 1 (default) - set nmesh to 1000
   ctr     <- f_process_ctr(ctr)
   out     <- list()
   n.alpha <- length(alpha)
-  xmin    <- min(data_) - sd(data_)
-  xmax    <- max(data_) + sd(data_)
+  xmin    <- min(data_) - sd(data_) # min of the data minus 1 sd
+  xmax    <- max(data_) + sd(data_) # max of the data plus 1 sd
   
+  # generate a sequence from xmin to xmax 
   x     <- seq(from = xmin, to = xmax, length.out = ctr$nmesh)
-  pdf_x <- PredPdf(object = object, par = par, x = x, data = data_, do.its = do.its, log = FALSE)
-  cumul <- apply(pdf_x, 1L, cumsum) * (x[2L] - x[1L])
+  
+  # get the predictive densities for the provided data and mesh x
+  pdf_x <- PredPdf(object = object, par = par, x = x, data = data_, do.its = do.its, log = FALSE, Z = Z)
+  
+  # apply cumsum across the time i.e. cumsum for each date and multiply by the time difference (x[2L] - x[1L]) in the sequence of x's
+  cumul <- apply(pdf_x, 1L, cumsum) * (x[2L] - x[1L]) # columns correspond to the cumsum of the original row
   out   <- list()
   draw  <- NULL
   if (do.its == TRUE) {
+    # matrix: (n x num_alpha)
     out$VaR <- matrix(NA, nrow = nrow(pdf_x), ncol = n.alpha)
     rownames(out$VaR) <-  paste0("t=",1:length(data_))
     if(zoo::is.zoo(data)){
@@ -127,6 +135,7 @@ Risk.MSGARCH_SPEC <- function(object, par, data, alpha = c(0.01, 0.05), nahead =
       out$VaR = as.ts(out$VaR)
     }
   } else {
+    # matrix: (nahead x num_alpha)
     out$VaR <- matrix(NA, nrow = nahead, ncol = n.alpha)
     rownames(out$VaR) <-  paste0("h=",1:nahead)
     if(zoo::is.zoo(data)){
@@ -137,14 +146,18 @@ Risk.MSGARCH_SPEC <- function(object, par, data, alpha = c(0.01, 0.05), nahead =
       out$VaR = as.ts(out$VaR)
     }
   }
+  # iterate over all pdf observations
   for (n in 1:nrow(pdf_x)) {
+    # iterate over all alphas
     for (i in 1:n.alpha) {
-      out$VaR[n, i] <- x[which.min(abs(cumul[, n] - alpha[i]))]
+      # the cumsum represents an approximation of the cdf - the argument x that minimises the distance between alpha and the cdf F(x) s.t. F(x) >= alpha is VaR(alpha) 
+      out$VaR[n, i] <- x[which.min(abs(cumul[, n] - alpha[i]))] 
     }
   }
   
+  # if nahead is greater than 1 we simulate nahead draws with the given data i.e simahead (in Sim method)
   if (nahead > 1 & do.its == FALSE) {
-    draw <- Sim(object = object, data = data_, nahead = nahead, nsim = nsim, par = par)$draw
+    draw <- Sim(object = object, data = data_, nahead = nahead, nsim = nsim, par = par, Z = Z)$draw
     if(isTRUE(do.cumulative)){
       draw = apply(draw, 2, cumsum)
     }
@@ -200,7 +213,7 @@ Risk.MSGARCH_SPEC <- function(object, par, data, alpha = c(0.01, 0.05), nahead =
 #' @rdname Risk
 #' @export
 Risk.MSGARCH_ML_FIT <- function(object, newdata = NULL, alpha = c(0.01, 0.05),
-                                do.es = TRUE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE,  ctr = list(), ...) {
+                                do.es = TRUE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE,  ctr = list(), newZ = NULL, ...) {
   data <- c(object$data, newdata)
   if(is.ts(object$data)){
     if(is.null(newdata)){
@@ -210,15 +223,22 @@ Risk.MSGARCH_ML_FIT <- function(object, newdata = NULL, alpha = c(0.01, 0.05),
     }
     data = as.ts(data)
   }
+  
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
+  
   out  <- Risk(object = object$spec, par = object$par, data = data, alpha = alpha,
-               do.es = do.es, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr)
+               do.es = do.es, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr, Z = Z)
   return(out)
 }
 
 #' @rdname Risk
 #' @export
 Risk.MSGARCH_MCMC_FIT <- function(object, newdata = NULL, alpha = c(0.01, 0.05),
-                                  do.es = TRUE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE, ctr = list(), ...) {
+                                  do.es = TRUE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE, ctr = list(), newZ = NULL, ...) {
   data <- c(object$data, newdata)
   if(is.ts(object$data)){
     if(is.null(newdata)){
@@ -228,7 +248,14 @@ Risk.MSGARCH_MCMC_FIT <- function(object, newdata = NULL, alpha = c(0.01, 0.05),
     }
     data = as.ts(data)
   }
+  
+  if(isTRUE(object$spec$is.tvp)){
+    Z  <- rbind(object$Z, newZ)
+  }else{
+    Z = NULL
+  }
+  
   out  <- Risk(object = object$spec, par = object$par, data = data, alpha = alpha,
-               do.es = do.es, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr)
+               do.es = do.es, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr, Z = Z)
   return(out)
 }

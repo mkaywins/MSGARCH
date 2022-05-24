@@ -172,27 +172,21 @@ FitML.MSGARCH_SPEC <- function(spec, data, ctr = list(), Z = NULL) {
   # create a matrix from the parameters and name the columns
   par <- matrix(vPn, nrow = 1L, dimnames = list(NULL, names(vPn)))
   
-  #if (isTRUE(spec$is.tvp)) {
-  #  
-  #  # sort the parameters for the final output
-  #  par_sorted <- f_sort_tvpfactors(spec, par)
-  #  
-  #  # add the factors to the parameters
-  #  spec <- f_add_factors_to_params(spec, par_sorted)
-  #  par <- par_sorted
-  #}
-  
-  if(isFALSE(spec$is.tvp)){
+  if(isTRUE(spec$is.tvp)){
+    par <- f_sort_tvppar(spec, par)
+    par <- as.vector(par)
+    
+    # add the factor names without adding the factor to all the other model parameters
+    names(par) = c(head(spec$label, sum(spec$n.params)),
+                   spec$factornames, tail(spec$label,  spec$K * (spec$K - 1)))
+  }else{
     par <- f_sort_par(spec, par) 
+    par <- as.vector(par)
+    names(par) <- spec$label
   }
   
-  #if (isTRUE(spec$is.tvp)) {
-  #  spec <- f_remove_factors_from_params(spec, par)
-  #  par <- f_rev_sort_tvpfactors(spec, par) # reverse the sorting s.t. InferenceFun can handle the input to optim
-  #}
   
-  par <- as.vector(par)
-  names(par) <- spec$label
+  
   
   # unnormalize parameters
   vPww <- f_unmapPar(par, spec, ctr$do.plm)
