@@ -75,7 +75,7 @@ arma::vec getDelta(const arma::mat& gamma, const int& m) {
 }
 
 List StartingValueEM_HMM(const arma::vec& vY, const int& K) {
-  double dMu = mean(vY);z
+  double dMu = mean(vY);
   double dSigma2 = var(vY);
 
   double start = 0.8;
