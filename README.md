@@ -47,6 +47,10 @@ spec = CreateSpec(switch.spec = list(do.tvp=TRUE),
 
 
 ``` r
+# sample data
+data("SMI", package = "MSGARCH")
+data = SMI
+
 # Constructing the covariate matrix Z
 Z = matrix(1, nrow = length(data)-1, ncol = 2)
 Z[,2] = data[1:2499]
