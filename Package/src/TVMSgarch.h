@@ -146,7 +146,7 @@ public:
     
     return P_it;
   }
-
+  
   // compute loglikelihood matrix
   NumericMatrix calc_lndMat(const NumericVector&);
   
@@ -230,10 +230,10 @@ inline void TVMSgarch::loadparam(const NumericVector& theta, NumericMatrix Z) {
 
 
 inline NumericVector TVMSgarch::f_pdf(const NumericVector& x,
-                                    const NumericVector& theta,
-                                    const NumericVector& y,
-                                    const NumericMatrix& Z,
-                                    const bool& is_log) {
+                                      const NumericVector& theta,
+                                      const NumericVector& y,
+                                      const NumericMatrix& Z,
+                                      const bool& is_log) {
   // computes volatility
   int s = 0;
   int nx = x.size();
@@ -321,7 +321,7 @@ inline List TVMSgarch::f_simAhead(const NumericVector& y, const int& n, const in
   NumericMatrix y_sim(m, n);
   NumericMatrix S(m, n);
   NumericMatrix P_t;
-
+  
   int K = get_K();
   NumericVector all_factors = extract_factors(theta);   // to get all the factors from the vector all_theta
   arma::cube CondVol(m,n,K);
@@ -383,7 +383,7 @@ inline NumericMatrix TVMSgarch::calc_lndMat(const NumericVector& y) {
 inline double TVMSgarch::HamiltonFilter(const NumericMatrix& lndMat,
                                         const NumericVector& all_theta,
                                         const NumericMatrix& Z) {
-
+  
   //std::cout << "Call: HM Filter" << std::endl;
   int n_step = lndMat.ncol();               // ncol of lndMat = number of observations
   
@@ -436,8 +436,8 @@ inline double TVMSgarch::HamiltonFilter(const NumericMatrix& lndMat,
 
 
 inline List TVMSgarch::f_get_Pstate(const NumericVector& theta,
-                                  const NumericVector& y,
-                                  const NumericMatrix& Z) {
+                                    const NumericVector& y,
+                                    const NumericMatrix& Z) {
   // init
   loadparam(theta, Z);  // load parameters
   prep_ineq_vol();      // prepare functions related to volatility
@@ -454,7 +454,7 @@ inline List TVMSgarch::f_get_Pstate(const NumericVector& theta,
   int K = get_K();
   
   
-    
+  
   int n_step = lndMat.ncol();
   double lnd = 0, min_lnd, delta, sum_tmp;
   NumericVector Pspot, Ppred, lndCol, tmp;
@@ -537,10 +537,10 @@ inline List TVMSgarch::f_get_Pstate(const NumericVector& theta,
 //------------------------------------- Model evaluation
 //-------------------------------------//
 inline NumericVector TVMSgarch::eval_model(NumericMatrix& all_thetas,
-                                         const NumericVector& y,
-                                         const NumericMatrix& Z,
-                                         const bool& do_prior) {
-
+                                           const NumericVector& y,
+                                           const NumericMatrix& Z,
+                                           const bool& do_prior) {
+  
   // all_theta = a0, a1, b, a0, a1, b, g00, g01, g10, g11, p1, p2
   //Rcout << all_thetas << std::endl;
   //Rcout << y << std::endl;

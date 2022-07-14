@@ -19,7 +19,7 @@ List FFBS(const arma::mat& allprobs, const arma::vec& delta,
   lscale = log(sumfoo); // log of summed probabilities = loglikelihood is initialised
   foo = foo / sumfoo;   // PSpot 
 
-  lalpha.col(0) = log(foo) + lscale; // log of numerator of (11.2)
+  lalpha.col(0) = log(foo) + lscale; 
   
   for (i = 1; i < T; i++) {
     foo = (foo.t() * mGamma).t() % allprobs.row(i).t(); // Ppred = foo.t() x mGamma  = PSpot x P(t) ... then ...  foo = Ppred x lik(i) = Prob(St | I(t))

@@ -202,7 +202,7 @@ Risk.MSGARCH_SPEC <- function(object, par, data, alpha = c(0.01, 0.05), nahead =
     }
   }
   colnames(out$VaR) <- alpha
-
+  
   if (isTRUE(do.es)) {
     colnames(out$ES) <- alpha
   }

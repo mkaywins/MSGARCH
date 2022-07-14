@@ -268,7 +268,7 @@ public:
   void set_LIN_MIN(double LND_MIN_) {LND_MIN = LND_MIN_; }
   
   
-
+  
   
   List f_get_Pstate(const NumericVector&, const NumericVector&);
   
@@ -316,29 +316,28 @@ inline void MSgarch::loadparam(const NumericVector& theta) {
   int k = 0;
   for (many::iterator it = specs.begin(); it != specs.end();
   ++it) {  // loop over models
-
+    
     NumericVector theta_it = extract_theta_it(theta, k);  // parameters of model 'it'
-    NumericVector P_it = extract_P_it(theta, k);  // transition probabilities from model 'it'
+    NumericVector P_it = extract_P_it(theta, k);          // transition probabilities from model 'it'
     (*it)->spec_loadparam(theta_it);
-    P_mat(k, _) = P_it; // each row corresponds to a state - the vector of probabilities is assigned to the rows
+    P_mat(k, _) = P_it;                                   // each row corresponds to a state - the vector of probabilities is assigned to the rows
     k++;
   }
-  //std::cout << "transitions probability matrix" << std::endl;
-  //Rcout << P_mat << std::endl;
+  
   P = P_mat; // transitions matrix
   
-  // -- computing the unconditional probabilities pi -- 
+  // -- computing the ergodic probabilities pi -- 
   
   // pi = (1,...,1)(I - P + Q)^-1, where Q is a matrix of ones 
-  arma::mat I = arma::eye(K,K); // identitiy matrix
-  arma::mat Umat = arma::ones(K,K); // matrix of 1s
-  arma::vec Uvec(K); // vector of 0s of size K
-  Uvec.fill(1); // make it into a vector of 1s
+  arma::mat I = arma::eye(K,K);       // identitiy matrix
+  arma::mat Umat = arma::ones(K,K);   // matrix of 1s
+  arma::vec Uvec(K);                  // vector of 0s of size K
+  Uvec.fill(1);                       // make it into a vector of 1s
   arma::mat foo = (I - as<arma::mat>(P_mat) + Umat).t();
   
   arma::vec delta = (foo).i() * Uvec; // .i() returns inverse of foo
   for(int i = 0; i < K; i++){
-    P0(i) = delta(i); // set the unconditional probabilities as the initial probabilities P0 = (p, 1-p)
+    P0(i) = delta(i);                 // set the unconditional probabilities as the initial probabilities P0 = (p, 1-p)
   }
 }
 

@@ -65,8 +65,8 @@ PredPdf <- function(object, ...) {
 #' @rdname PredPdf
 #' @export
 PredPdf.MSGARCH_SPEC <- function(object, x = NULL, par = NULL, data = NULL,
-                              log = FALSE, do.its = FALSE, nahead = 1L, 
-                              do.cumulative = FALSE, ctr = list(), Z = NULL, ...) {
+                                 log = FALSE, do.its = FALSE, nahead = 1L, 
+                                 do.cumulative = FALSE, ctr = list(), Z = NULL, ...) {
   # checks for data, object 
   object <- f_check_spec(object)
   data_  <- f_check_y(data)
@@ -219,8 +219,8 @@ PredPdf.MSGARCH_SPEC <- function(object, x = NULL, par = NULL, data = NULL,
 #' @rdname PredPdf
 #' @export
 PredPdf.MSGARCH_ML_FIT <- function(object, x = NULL, newdata = NULL,
-                                log = FALSE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE, ctr = list(), newZ = NULL,
-                                ...) {
+                                   log = FALSE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE, ctr = list(), newZ = NULL,
+                                   ...) {
   data <- c(object$data, newdata)
   if(is.ts(object$data)){
     if(is.null(newdata)){
@@ -238,15 +238,15 @@ PredPdf.MSGARCH_ML_FIT <- function(object, x = NULL, newdata = NULL,
   }
   
   out  <- PredPdf(object = object$spec, x = x, par = object$par, data = data,
-               log = log, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr,
-               Z = Z)
+                  log = log, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr,
+                  Z = Z)
   return(out)
 }
 
 #' @rdname PredPdf
 #' @export
 PredPdf.MSGARCH_MCMC_FIT <- function(object, x = NULL, newdata = NULL,
-                                  log = FALSE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE, ctr = list(), newZ = NULL, ...) {
+                                     log = FALSE, do.its = FALSE, nahead = 1L, do.cumulative = FALSE, ctr = list(), newZ = NULL, ...) {
   data <- c(object$data, newdata)
   if(is.ts(object$data)){
     if(is.null(newdata)){
@@ -263,6 +263,6 @@ PredPdf.MSGARCH_MCMC_FIT <- function(object, x = NULL, newdata = NULL,
     Z = NULL
   }
   out  <- PredPdf(object = object$spec, x = x, par = object$par, data = data,
-               log = log, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr, Z = Z)
+                  log = log, do.its = do.its, nahead = nahead, do.cumulative = do.cumulative, ctr = ctr, Z = Z)
   return(out)
 }

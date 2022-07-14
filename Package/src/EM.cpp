@@ -33,13 +33,14 @@ double abs3(const double& x) {
   return abs_x;
 }
 
+// extract element_name from the provided list and return an arma::vec 
 arma::vec AccessListVectors_vec(const List& list,
                                 const std::string& element_name) {
   SEXP foo = wrap(as<NumericVector>(list[element_name]));
   arma::vec vec_out = Rcpp::as<arma::vec>(foo);
   return vec_out;
 }
-
+// extract element_name from the provided list and return an arma::mat 
 arma::mat AccessListVectors_mat(const List& list,
                                 const std::string& element_name) {
   SEXP foo = wrap(as<NumericMatrix>(list[element_name]));
@@ -74,7 +75,7 @@ arma::vec getDelta(const arma::mat& gamma, const int& m) {
 }
 
 List StartingValueEM_HMM(const arma::vec& vY, const int& K) {
-  double dMu = mean(vY);
+  double dMu = mean(vY);z
   double dSigma2 = var(vY);
 
   double start = 0.8;
@@ -91,9 +92,9 @@ List StartingValueEM_HMM(const arma::vec& vY, const int& K) {
   mGamma.fill(0.1 / (K - 1.0));  // mGamma i.e. transition probabilities are initialized 
 
   for (int j = 0; j < K; j++) {
-    vMu(j) = dMu * foo;         // initialise vector of means vMu
-    vSigma2(j) = dSigma2 * foo; // initialise vector of sigma^2 
-    mGamma(j, j) = 0.9;         // diagonal entries are set to 0.9
+    vMu(j) = dMu * foo;          // initialise vector of means vMu
+    vSigma2(j) = dSigma2 * foo;  // initialise vector of sigma^2 
+    mGamma(j, j) = 0.9;          // diagonal entries are set to 0.9
     foo += by;
   }
 
@@ -165,11 +166,14 @@ arma::mat GaussianLk(const arma::vec& vY, const arma::vec& vMu,
                      const arma::vec& vSigma2, const int& K, const int& T,
                      const int& lg) {
   // returns a matrix of likelihoods for all observations (rows) and for all states (cols)
+  // this is often referred to as emission matrix
   arma::mat lk(T, K);
 
   int i, j;
 
+  // rows of lk correspond to the P(Y_t = y_t | S_t = j)
   for (i = 0; i < T; i++) {
+    // columns of lk correspond to S_t = j
     for (j = 0; j < K; j++) {
       lk(i, j) = R::dnorm4(vY(i), vMu(j), sqrt(vSigma2(j)), lg); // compute normal lik for each observation // lg=1: log(p) lg=0: p
       if (lk(i, j) < 1e-250 && !lg) lk(i, j) = 1e-250;           // adjust the lik for underflow
@@ -184,7 +188,7 @@ List HMMlalphabeta(const arma::vec vY, const arma::mat mGamma,
                    const int K) {
   // returns the results from the FFBS algorithm
   
-  // unconditional probabilities for states K
+  // steady-state probabilities for states K
   arma::vec vDelta = getDelta(mGamma, K);
 
   // compute likelihood under the assumption that vY follow a Gaussian distribution
@@ -193,8 +197,10 @@ List HMMlalphabeta(const arma::vec vY, const arma::mat mGamma,
   // forward filtering backward smoothing algorithm
   List FB = FFBS(allprobs, vDelta, mGamma, K, T);
 
-  FB["allprobs"] = allprobs; // likelihood
-
+  FB["allprobs"] = allprobs; // likelihood or emission matrix
+  
+  
+  // return 
   return FB;
 }
 
@@ -265,10 +271,10 @@ List EM_HMM(const arma::vec& vY, const int& K, const int& maxIter = 1e3,
   // initialising starting values for EM
   List lStarting = StartingValueEM_HMM(vY, K);
   
-  // get the initial values for mu, sigma and the matrix for transition probabilities mGamma
-  arma::vec vMu = AccessListVectors_vec(lStarting, "vMu");
-  arma::vec vSigma2 = AccessListVectors_vec(lStarting, "vSigma2");
-  arma::mat mGamma = AccessListVectors_mat(lStarting, "mGamma");
+  // get the initial values for 
+  arma::vec vMu = AccessListVectors_vec(lStarting, "vMu"); // mu
+  arma::vec vSigma2 = AccessListVectors_vec(lStarting, "vSigma2"); // sigma
+  arma::mat mGamma = AccessListVectors_mat(lStarting, "mGamma"); // transition matrix
 
   if (constraintZero) {
     // set all elements to zero
@@ -283,9 +289,10 @@ List EM_HMM(const arma::vec& vY, const int& K, const int& maxIter = 1e3,
   int T = vY.size();
 
   List fb;
+
   arma::mat lalpha(K, T);
   arma::mat lbeta(K, T);
-  arma::mat allprobs(T, K);
+  arma::mat allprobs(T, K); // emission matrix
   arma::mat SmoothProb(T, K);
   arma::mat PredictedProb(T, K);
   arma::mat FilteredProb(T, K);
@@ -298,11 +305,14 @@ List EM_HMM(const arma::vec& vY, const int& K, const int& maxIter = 1e3,
   // eps compared with tol (tolerance)
   double eps = 1.0;
 
+  // returns the results from the FFBS algorithm
   fb = HMMlalphabeta(vY, mGamma, vMu, vSigma2, T, K);
+  
+  // get a matrix for alpha
   lalpha = AccessListVectors_mat(fb, "lalpha");
 
   double c = max(lalpha.col(T - 1));
-  double llk = c + log(sum(exp(lalpha.col(T - 1) - c))); // stabilisation
+  double llk = c + log(sum(exp(lalpha.col(T - 1) - c))); // stabilization
 
   LLKSeries(0) = llk;
 

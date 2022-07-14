@@ -22,7 +22,7 @@ f_CondVol <- function(object, par, data, do.its = FALSE, nahead = 1L,
   ctr       <- f_process_ctr(ctr)
   
 
-  variance  <- object$rcpp.func$calc_ht(par.check, data_)
+  variance  <- object$rcpp.func$calc_ht(par.check, data_) # dim = 2500 x 1 x 2 for fitml and SMI
 
   if(isTRUE(object$is.tvp) && !is.null(Z)){
     P <- State(object = object,par = par, data = data_, Z = Z)
@@ -41,7 +41,8 @@ f_CondVol <- function(object, par, data, do.its = FALSE, nahead = 1L,
     }
   } else {
     for (i in 1:nrow(par.check)) {
-      vol[,i] <- rowSums(PredProb[,i,] * variance[,i,])
+      # weighted average of predictive probabilities sum_over k : {P(S_T+h = k | y^T) * vola(k)}
+      vol[,i] <- rowSums(PredProb[,i,] * variance[,i,]) # compute the sum of predprob and the regime-specific variance from ht
     }
   }
   vol <- sqrt(vol)
@@ -50,6 +51,7 @@ f_CondVol <- function(object, par, data, do.its = FALSE, nahead = 1L,
     tmp    <- mean(vol[dim(PredProb)[1]])
     vol    <- vector(mode = "numeric", length = nahead)
     vol[1] <- tmp
+    # --- multistep prediction ---
     if (nahead > 1) {
       # MSGARCH_SPEC.Sim
       draw <- Sim(object = object, data = data, nahead = nahead,
