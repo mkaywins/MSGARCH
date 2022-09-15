@@ -13,6 +13,7 @@
   nahead = 1L,
   par = NULL,
   nburn = 500L,
+  Z = NULL,
   ...
 )
 

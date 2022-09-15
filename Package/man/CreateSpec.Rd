@@ -7,7 +7,7 @@
 CreateSpec(
   variance.spec = list(model = c("sGARCH", "sGARCH")),
   distribution.spec = list(distribution = c("norm", "norm")),
-  switch.spec = list(do.mix = FALSE, K = NULL),
+  switch.spec = list(do.mix = FALSE, K = NULL, do.tvp = FALSE),
   constraint.spec = list(fixed = list(), regime.const = NULL),
   prior = list(mean = list(), sd = list())
 )
@@ -34,7 +34,10 @@ a Markov-Switching GARCH is created (see *Details*). Default: \code{do.mix = FAL
  In the case where a single regime is specified in \code{variance.spec} and \code{distribution.spec},
  this parameter allows to automatically expand this single regime to \code{K} similar
  regimes without the need to explicitly define them in \code{variance.spec}
- and \code{distribution.spec} (see *Examples*).}
+ and \code{distribution.spec} (see *Examples*).\cr
+ \code{do.tvp} is a \code{logical} indicating if the specification is a time-varying Markov-
+ Switching Model. It is not compatible with \code{do.mix = TRUE}. In addtion, time-varying 
+ switching is only supported for \code{FitML()} for which a covariate matrix needs to supplied.}
 
 \item{constraint.spec}{\code{list} with element \code{fixed} and \code{regime.const}.
 Only one of \code{fixed} and \code{regime.const}
@@ -64,6 +67,8 @@ A list of class \code{MSGARCH_SPEC} with the following elements:\cr
 \itemize{
 \item \code{par0}: Vector (of size d) of default parameters.
 \item \code{is.mix}: Logical indicating if the specification is a mixture.
+\item \code{is.tvp}: Logical indicating if the specification should be fitted with time-varying transition probabilities.
+      This option only works with \code{FitML} and with \code{is.mix = FALSE}.
 \item \code{K}: Number of regimes.
 \item \code{lower}: Vector (of size d) of lower parameters' bounds.
 \item \code{upper}: Vector (of size d) of upper parameters' bounds.

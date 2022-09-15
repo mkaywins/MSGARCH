@@ -20,6 +20,7 @@
 #'        is used. (Default: \code{do.plm = FALSE})
 #'        \item \code{OptimFUN}: Custom optimization function (see *Details*).
 #'        }
+#' @param Z A covariate matrix. Needs to be provided if \code{do.tvp = TRUE} was set in the specifciation.
 #' @return A list of class \code{MSGARCH_ML_FIT} with the following elements:
 #'        \itemize{
 #'        \item \code{par}: Vector (of size d) of optimal parameters.

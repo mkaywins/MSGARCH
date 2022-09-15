@@ -19,6 +19,7 @@ PredPdf(object, ...)
   nahead = 1L,
   do.cumulative = FALSE,
   ctr = list(),
+  Z = NULL,
   ...
 )
 
@@ -31,6 +32,7 @@ PredPdf(object, ...)
   nahead = 1L,
   do.cumulative = FALSE,
   ctr = list(),
+  newZ = NULL,
   ...
 )
 
@@ -43,6 +45,7 @@ PredPdf(object, ...)
   nahead = 1L,
   do.cumulative = FALSE,
   ctr = list(),
+  newZ = NULL,
   ...
 )
 }

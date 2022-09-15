@@ -9,7 +9,7 @@
 \usage{
 UncVol(object, ...)
 
-\method{UncVol}{MSGARCH_SPEC}(object, par = NULL, ctr = list(), ...)
+\method{UncVol}{MSGARCH_SPEC}(object, par = NULL, ctr = list(), Z = NULL, ...)
 
 \method{UncVol}{MSGARCH_ML_FIT}(object, ctr = list(), ...)
 

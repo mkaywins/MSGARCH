@@ -20,7 +20,11 @@
 #'  In the case where a single regime is specified in \code{variance.spec} and \code{distribution.spec},
 #'  this parameter allows to automatically expand this single regime to \code{K} similar
 #'  regimes without the need to explicitly define them in \code{variance.spec}
-#'  and \code{distribution.spec} (see *Examples*).
+#'  and \code{distribution.spec} (see *Examples*).\cr
+#'  \code{do.tvp} is a \code{logical} indicating if the specification is a time-varying Markov-
+#'  Switching Model. It is not compatible with \code{do.mix = TRUE}. In addtion, time-varying 
+#'  switching is only supported for \code{FitML()} for which a covariate matrix needs to supplied.
+#'  
 #' @param constraint.spec  \code{list} with element \code{fixed} and \code{regime.const}.
 #' Only one of \code{fixed} and \code{regime.const}
 #'  can be set by the user as it is not allowed to set both at the same time. \cr

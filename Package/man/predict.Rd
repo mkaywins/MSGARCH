@@ -14,6 +14,7 @@
   par = NULL,
   do.cumulative = FALSE,
   ctr = list(),
+  newZ = NULL,
   ...
 )
 
@@ -24,6 +25,7 @@
   do.return.draw = FALSE,
   do.cumulative = FALSE,
   ctr = list(),
+  newZ = NULL,
   ...
 )
 
@@ -34,6 +36,7 @@
   do.return.draw = FALSE,
   do.cumulative = FALSE,
   ctr = list(),
+  newZ = NULL,
   ...
 )
 }

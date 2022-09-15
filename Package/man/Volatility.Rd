@@ -9,11 +9,11 @@
 \usage{
 Volatility(object, ...)
 
-\method{Volatility}{MSGARCH_SPEC}(object, par, data, ...)
+\method{Volatility}{MSGARCH_SPEC}(object, par, data, Z = NULL, ...)
 
-\method{Volatility}{MSGARCH_ML_FIT}(object, newdata = NULL, ...)
+\method{Volatility}{MSGARCH_ML_FIT}(object, newdata = NULL, newZ = NULL, ...)
 
-\method{Volatility}{MSGARCH_MCMC_FIT}(object, newdata = NULL, ...)
+\method{Volatility}{MSGARCH_MCMC_FIT}(object, newdata = NULL, newZ = NULL, ...)
 }
 \arguments{
 \item{object}{Model specification of class \code{MSGARCH_SPEC}
