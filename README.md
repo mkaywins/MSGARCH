@@ -98,12 +98,6 @@ I want to re-emphasize that I created this fork solely for the purpose of my mas
 thesis. I don't want to make any pull-request to the original package and I am not planing 
 on maintain this repo in the future. 
 
-Contact:  
-
-* [LinkedIn - Max Kuttner](https://www.linkedin.com/in/maximilian-kuttner/) 
-* [Uni - WU Vienna](https://www.wu.ac.at/en/programs/masters-programs/quantitative-finance/overview)
-
-
 
 -------------------------------------------------------------------------------------------------------
 
